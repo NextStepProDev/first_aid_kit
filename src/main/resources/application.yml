@@ -1,0 +1,46 @@
+server:
+  port: 8080
+
+spring:
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: djdefkon@gmail.com
+    password: sqhj ecos hwni dckr
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+
+  datasource:
+    url: jdbc:postgresql://localhost:5432/first_aid_kit
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+    type: com.zaxxer.hikari.HikariDataSource
+    hikari:
+      idle-timeout: 10000
+      connection-timeout: 20000
+      minimum-idle: 10
+      maximum-pool-size: 20
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+  mvc:
+    hiddenmethod:
+      filter:
+        enabled: true
+
+#  flyway:
+#    baseline-on-migrate: true
