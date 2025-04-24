@@ -1,4 +1,3 @@
-
 package com.drugs.infrastructure.pdf;
 
 import com.drugs.controller.dto.DrugsDTO;
@@ -7,6 +6,8 @@ import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -16,7 +17,11 @@ import java.util.List;
 @RequiredArgsConstructor
 public class PdfExportService {
 
+    private static final Logger logger = LoggerFactory.getLogger(PdfExportService.class);
+
     public ByteArrayInputStream generatePdf(List<DrugsDTO> drugs) {
+        logger.info("Starting PDF generation for drug list");
+
         Document document = new Document();
         ByteArrayOutputStream out = new ByteArrayOutputStream();
 
@@ -46,8 +51,10 @@ public class PdfExportService {
 
             document.add(table);
             document.close();
+            logger.info("PDF generation completed successfully");
 
         } catch (Exception e) {
+            logger.error("Failed to generate PDF", e);
             throw new RuntimeException("Failed to generate PDF", e);
         }
 

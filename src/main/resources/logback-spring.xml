@@ -19,6 +19,17 @@
         <appender-ref ref="CONSOLE"/>
     </root>
 
+    <appender name="ERROR_FILE" class="ch.qos.logback.core.FileAppender">
+        <file>logs/errors.log</file>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <logger name="org.springframework" level="ERROR">
+        <appender-ref ref="ERROR_FILE"/>
+    </logger>
+
 </configuration>
 
         <!--Jeśli w ogóle nie będzie tego pliku to spring boot wykorzysta swoje ustawienie i i tak będzie logował w taki jak ten

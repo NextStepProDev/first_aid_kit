@@ -1,6 +1,7 @@
 package com.drugs.infrastructure.business;
 
 import com.drugs.controller.dto.*;
+import com.drugs.controller.exception.DrugNotFoundException;
 import com.drugs.infrastructure.database.entity.DrugsEntity;
 import com.drugs.infrastructure.database.mapper.DrugsMapper;
 import com.drugs.infrastructure.database.repository.DrugsRepository;
@@ -21,8 +22,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
-import static org.springframework.http.HttpStatus.NOT_FOUND;
-
 @Service
 @AllArgsConstructor
 public class DrugsService {
@@ -34,24 +33,33 @@ public class DrugsService {
     private static final Logger logger = LoggerFactory.getLogger(DrugsService.class);
 
     public void addNewDrug(DrugsRequestDTO dto) {
+        logger.info("Attempting to add a new drug: {}", dto.getName());
+
         DrugsEntity entity = DrugsEntity.builder()
                 .drugsName(dto.getName())
-                .drugsForm(drugsFormService.resolve(DrugsFormDTO.valueOf(dto.getForm()))).expirationDate(DateUtils.buildExpirationDate(dto.getExpirationYear(), dto.getExpirationMonth()))
+                .drugsForm(drugsFormService.resolve(DrugsFormDTO.valueOf(dto.getForm())))
+                .expirationDate(DateUtils.buildExpirationDate(dto.getExpirationYear(), dto.getExpirationMonth()))
                 .drugsDescription(dto.getDescription())
                 .build();
 
         drugsRepository.save(entity);
+        logger.info("Successfully added the drug: {}", dto.getName());
     }
 
     public void deleteDrug(Integer id) {
+        logger.info("Attempting to delete drug with ID: {}", id);
         DrugsEntity entity = drugsRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Drug not found: " + id));
+                .orElseThrow(() -> new DrugNotFoundException("Drug not found with ID: " + id));
+
         drugsRepository.delete(entity);
+        logger.info("Successfully deleted drug with ID: {}", id);
     }
 
     public DrugsDTO updateDrug(Integer id, DrugsRequestDTO dto) {
+        logger.info("Attempting to update drug with ID: {}", id);
+
         DrugsEntity entity = drugsRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Drug not found: " + id));
+                .orElseThrow(() -> new DrugNotFoundException("Drug not found with ID: " + id));
 
         entity.setDrugsName(dto.getName());
         entity.setDrugsForm(drugsFormService.resolve(DrugsFormDTO.valueOf(dto.getForm())));
@@ -60,59 +68,84 @@ public class DrugsService {
 
         DrugsEntity saved = drugsRepository.save(entity);
 
+        logger.info("Successfully updated drug with ID: {}", id);
         return drugsMapper.mapToDTO(saved);
     }
 
     public List<DrugsDTO> getDrugsByName(String name) {
-        return drugsRepository.findAllByDrugsNameIgnoreCase(name).stream()
+        logger.info("Fetching drugs with name: {}", name);
+
+        List<DrugsDTO> drugs = drugsRepository.findAllByDrugsNameIgnoreCase(name).stream()
                 .map(drugsMapper::mapToDTO)
-                .toList();
+                .collect(Collectors.toList());
+
+        logger.info("Found {} drugs with name: {}", drugs.size(), name);
+        return drugs;
     }
 
     public List<DrugsDTO> getDrugsExpiringSoon(int year, int month) {
+        logger.info("Fetching drugs expiring soon between year: {} and month: {}", year, month);
         OffsetDateTime now = OffsetDateTime.now();
         OffsetDateTime until = DateUtils.buildExpirationDate(year, month);
-        return drugsRepository.findByExpirationDateBetweenOrderByExpirationDateAsc(now, until).stream()
+        List<DrugsDTO> drugs = drugsRepository.findByExpirationDateBetweenOrderByExpirationDateAsc(now, until).stream()
                 .map(drugsMapper::mapToDTO)
                 .toList();
+        logger.info("Found {} drugs expiring soon.", drugs.size());
+        return drugs;
     }
 
     public List<DrugsDTO> getExpiredDrugs() {
+        logger.info("Fetching expired drugs.");
+
         OffsetDateTime now = OffsetDateTime.now();
-        return drugsRepository.findAll().stream()
+        List<DrugsDTO> expiredDrugs = drugsRepository.findAll().stream()
                 .filter(drug -> drug.getExpirationDate() != null && drug.getExpirationDate().isBefore(now))
                 .map(drugsMapper::mapToDTO)
                 .sorted(Comparator.comparing(DrugsDTO::getExpirationDate)) // opcjonalne: sortowanie od najstarszych
-                .toList();
+                .collect(Collectors.toList());
+
+        logger.info("Found {} expired drugs.", expiredDrugs.size());
+        return expiredDrugs;
     }
 
     public List<DrugSimpleDTO> getAllDrugsSimple() {
-        return drugsRepository.findAll().stream()
+        logger.info("Fetching all simple drug data.");
+        List<DrugSimpleDTO> drugs = drugsRepository.findAll().stream()
                 .map(drugsMapper::mapToSimpleDTO)
                 .toList();
+        logger.info("Found {} drugs.", drugs.size());
+        return drugs;
     }
 
-//    public List<DrugsEntity> getAllDrugs() {
-//        return drugsRepository.findAll().stream()
-//                .sorted(Comparator.comparing(DrugsEntity::getExpirationDate, Comparator.nullsLast(Comparator.naturalOrder())))
-//                .toList();
-//    }
-
     public DrugsDTO getDrugById(Integer id) {
-        DrugsEntity entity = drugsRepository.findById(id)
-                .orElseThrow(() -> new ResponseStatusException(NOT_FOUND, "Drug not found, id: " + id));
+        logger.info("Fetching drug with ID: {}", id);
+        DrugsEntity entity = null;
+        try {
+            entity = drugsRepository.findById(id)
+                    .orElseThrow(() -> new DrugNotFoundException("Drug not found with ID: " + id));
+        } catch (ResponseStatusException e) {
+            logger.error("Drug not found with ID: {}", id);
+            throw e;
+        }
+        logger.info("Found drug with ID: {}", id);
         return drugsMapper.mapToDTO(entity);
     }
 
     public Page<DrugsDTO> getDrugsPaged(Pageable pageable) {
-        return drugsRepository.findAll(pageable)
+        logger.info("Fetching paged drugs with page: {}", pageable.getPageNumber());
+        Page<DrugsDTO> drugs = drugsRepository.findAll(pageable)
                 .map(drugsMapper::mapToDTO);
+        logger.info("Found {} drugs on page: {}", drugs.getContent().size(), pageable.getPageNumber());
+        return drugs;
     }
 
     public List<DrugsDTO> searchByDescription(String text) {
-        return drugsRepository.findByDrugsDescriptionIgnoreCaseContaining(text).stream()
+        logger.info("Searching drugs by description: {}", text);
+        List<DrugsDTO> drugs = drugsRepository.findByDrugsDescriptionIgnoreCaseContaining(text).stream()
                 .map(drugsMapper::mapToDTO)
                 .toList();
+        logger.info("Found {} drugs with description containing: {}", drugs.size(), text);
+        return drugs;
     }
 
     public List<DrugsDTO> getAllDrugs() {
@@ -135,8 +168,7 @@ public class DrugsService {
             if (!drug.getAlertSent()) {
                 try {
                     // Wysyłanie e-maila
-                    emailService.sendEmail(
-                            "recipient@example.com", // W przypadku testów może to być mockowane
+                    emailService.sendEmail("recipient@example.com", // W przypadku testów może to być mockowane
                             "Drug Expiry Alert",
                             "This is a reminder that the drug " + drug.getDrugsName() + " is about to expire."
                     );
@@ -155,18 +187,24 @@ public class DrugsService {
     }
 
     public void sendDefaultExpiryAlertEmails() {
+        logger.info("Sending default expiry alert emails.");
         OffsetDateTime now = OffsetDateTime.now();
         OffsetDateTime oneMonthLater = now.plusMonths(1);
         sendExpiryAlertEmails(now, oneMonthLater);
     }
 
     public DrugStatisticsDTO getDrugStatistics() {
+        logger.info("Fetching drug statistics.");
+
         long total = drugsRepository.count();
         long expired = drugsRepository.countByExpirationDateBefore(OffsetDateTime.now());
         long alertsSent = drugsRepository.countByAlertSentTrue();
         List<Object[]> rawStats = drugsRepository.countGroupedByForm();
         Map<String, Long> stats = mapGroupedByForm(rawStats);
         long activeDrugs = total - expired;
+
+        logger.info("Statistics fetched: Total Drugs: {}, Expired Drugs: {}, Active Drugs: {}, Alerts Sent: {}",
+                total, expired, activeDrugs, alertsSent);
 
         return DrugStatisticsDTO.builder()
                 .totalDrugs(total)

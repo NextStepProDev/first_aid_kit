@@ -7,6 +7,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -15,6 +17,8 @@ import java.util.Optional;
 
 @Repository
 public interface DrugsRepository extends JpaRepository<DrugsEntity, Integer> {
+
+    Logger logger = LoggerFactory.getLogger(DrugsRepository.class);
 
     Page<DrugsEntity> findAll(Pageable pageable);
 
@@ -26,8 +30,6 @@ public interface DrugsRepository extends JpaRepository<DrugsEntity, Integer> {
     );
 
     List<DrugsEntity> findByDrugsDescriptionIgnoreCaseContaining(String text);
-
-    List<DrugsEntity> findByExpirationDateBetween(OffsetDateTime now, OffsetDateTime oneMonthLater);
 
     long countByExpirationDateBefore(OffsetDateTime now);
 
@@ -41,4 +43,7 @@ public interface DrugsRepository extends JpaRepository<DrugsEntity, Integer> {
             OffsetDateTime end
     );
 
+    default void logQuery(String query) {
+        logger.info("Executing query: {}", query);
+    }
 }
