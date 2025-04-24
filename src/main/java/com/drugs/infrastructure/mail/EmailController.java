@@ -24,7 +24,7 @@ public class EmailController {
 
     @GetMapping("/alert")
     public String sendExpiryAlerts() {
-        drugsService.sendExpiryAlertEmails();
+        drugsService.sendDefaultExpiryAlertEmails();
         return "Alerty zostały wysłane";
     }
 }

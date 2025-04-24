@@ -5,8 +5,10 @@ import com.drugs.controller.dto.DrugsDTO;
 import com.drugs.controller.dto.DrugsFormDTO;
 import com.drugs.controller.dto.DrugsRequestDTO;
 import com.drugs.infrastructure.database.entity.DrugsEntity;
+import com.drugs.infrastructure.database.entity.DrugsFormEntity;
 import com.drugs.infrastructure.database.mapper.DrugsMapper;
 import com.drugs.infrastructure.database.repository.DrugsRepository;
+import com.drugs.infrastructure.mail.EmailService;
 import com.drugs.infrastructure.util.DateUtils;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,6 +17,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -32,6 +36,9 @@ class DrugsServiceTest {
 
     @Mock
     private DrugsMapper drugsMapper;
+
+    @Mock
+    private EmailService mailService;
 
     @InjectMocks
     private DrugsService drugsService;
@@ -147,5 +154,78 @@ class DrugsServiceTest {
         assertThat(result.getAlertSentCount()).isEqualTo(2L);
         assertThat(result.getDrugsByForm()).containsEntry("PILLS", 5L);
         assertThat(result.getDrugsByForm()).containsEntry("SYRUP", 3L);
+    }
+
+    @Test
+    void getDrugsSorted_shouldReturnSortedList() {
+        DrugsEntity drug1 = new DrugsEntity();
+        drug1.setDrugsName("Aspirin");
+        drug1.setExpirationDate(DateUtils.buildExpirationDate(2025, 1));
+        DrugsEntity drug2 = new DrugsEntity();
+        drug2.setDrugsName("Ibuprofen");
+        drug2.setExpirationDate(DateUtils.buildExpirationDate(2024, 12));
+
+        when(drugsRepository.findAll(any(org.springframework.data.domain.Sort.class))).thenReturn(java.util.List.of(drug2, drug1));
+        when(drugsMapper.mapToDTO(drug2)).thenReturn(DrugsDTO.builder().drugsName("Ibuprofen").build());
+        when(drugsMapper.mapToDTO(drug1)).thenReturn(DrugsDTO.builder().drugsName("Aspirin").build());
+
+        java.util.List<DrugsDTO> result = drugsService.getAllSorted("expirationDate");
+
+        assertThat(result.get(0).getDrugsName()).isEqualTo("Ibuprofen");
+        assertThat(result.get(1).getDrugsName()).isEqualTo("Aspirin");
+    }
+
+    @Test
+    void getDrugsByDescription_shouldReturnMatchingDrugs() {
+        DrugsEntity entity = new DrugsEntity();
+        entity.setDrugsName("Nurofen");
+        entity.setDrugsDescription("Painkiller");
+
+        when(drugsRepository.findByDrugsDescriptionIgnoreCaseContaining("pain")).thenReturn(java.util.List.of(entity));
+        when(drugsMapper.mapToDTO(entity)).thenReturn(DrugsDTO.builder().drugsName("Nurofen").build());
+
+        java.util.List<DrugsDTO> result = drugsService.searchByDescription("pain");
+
+        assertThat(result).hasSize(1);
+        assertThat(result.get(0).getDrugsName()).isEqualTo("Nurofen");
+    }
+
+    @Test
+    void sendMailAlert_shouldSendEmailAndMarkAlertSent() {
+        DrugsEntity drug = new DrugsEntity();
+        drug.setDrugsId(1);
+        drug.setDrugsName("Old Drug");
+
+        // Zakładając, że expiracja to 2025-05-15
+        OffsetDateTime expiration = DateUtils.buildExpirationDate(2025, 5);
+        OffsetDateTime start = DateUtils.buildStartOfMonth(2025, 5);
+        OffsetDateTime end = DateUtils.buildExpirationDate(2025, 5);
+
+        drug.setExpirationDate(expiration);
+        drug.setAlertSent(false);
+        drug.setDrugsForm(DrugsFormEntity.builder().name("PILLS").build());
+
+        // Mockowanie repozytorium
+        when(drugsRepository.findByExpirationDateBetweenAndAlertSentFalse(eq(start), eq(end)))
+                .thenReturn(List.of(drug));
+
+        // Mockowanie metody wysyłania e-maila
+        doNothing().when(mailService).sendEmail(any(), any(), any());
+
+        // Mockowanie zapisania leku
+        when(drugsRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Wysyłanie alertu
+        drugsService.sendExpiryAlertEmails(start, end);
+
+        // Weryfikacja
+        verify(mailService, times(1)).sendEmail(anyString(), anyString(), anyString());
+
+        ArgumentCaptor<DrugsEntity> savedCaptor = ArgumentCaptor.forClass(DrugsEntity.class);
+        verify(drugsRepository).save(savedCaptor.capture());
+
+        // Sprawdzamy, czy alert został ustawiony na true
+        DrugsEntity saved = savedCaptor.getValue();
+        assertThat(saved.getAlertSent()).isTrue();
     }
 }

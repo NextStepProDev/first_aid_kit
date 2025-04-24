@@ -36,4 +36,9 @@ public class DrugsEntity {
 
     @Column(name = "alert_sent")
     private Boolean alertSent;
+
+    protected boolean canEqual(final Object other) {
+        return other instanceof DrugsEntity;
+    }
+
 }

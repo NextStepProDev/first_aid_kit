@@ -7,6 +7,8 @@ import com.drugs.infrastructure.database.repository.DrugsRepository;
 import com.drugs.infrastructure.mail.EmailService;
 import com.drugs.infrastructure.util.DateUtils;
 import lombok.AllArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -29,6 +31,7 @@ public class DrugsService {
     private final DrugsFormService drugsFormService;
     private final DrugsMapper drugsMapper;
     private final EmailService emailService;
+    private static final Logger logger = LoggerFactory.getLogger(DrugsService.class);
 
     public void addNewDrug(DrugsRequestDTO dto) {
         DrugsEntity entity = DrugsEntity.builder()
@@ -119,29 +122,42 @@ public class DrugsService {
                 .toList();
     }
 
-    public void sendExpiryAlertEmails() {
+    public void sendExpiryAlertEmails(OffsetDateTime start, OffsetDateTime end) {
+        logger.info("Sending expiry alert emails for drugs expiring between {} and {}", start, end);
+
+        List<DrugsEntity> drugs = drugsRepository.findByExpirationDateBetweenAndAlertSentFalse(start, end);
+
+        logger.info("Found {} drugs to send alerts for", drugs.size());
+
+        for (DrugsEntity drug : drugs) {
+            logger.info("Sending alert for drug: {}", drug.getDrugsName());
+
+            if (!drug.getAlertSent()) {
+                try {
+                    // Wysyłanie e-maila
+                    emailService.sendEmail(
+                            "recipient@example.com", // W przypadku testów może to być mockowane
+                            "Drug Expiry Alert",
+                            "This is a reminder that the drug " + drug.getDrugsName() + " is about to expire."
+                    );
+
+                    // Markujemy lek jako powiadomiony
+                    drug.setAlertSent(true);
+                    drugsRepository.save(drug);
+                    logger.info("Alert sent and drug marked as notified: {}", drug.getDrugsName());
+                } catch (Exception e) {
+                    logger.error("Failed to send alert for drug: {}", drug.getDrugsName(), e);
+                }
+            } else {
+                logger.info("Drug already notified: {}", drug.getDrugsName());
+            }
+        }
+    }
+
+    public void sendDefaultExpiryAlertEmails() {
         OffsetDateTime now = OffsetDateTime.now();
         OffsetDateTime oneMonthLater = now.plusMonths(1);
-
-        List<DrugsEntity> expiringDrugs = drugsRepository.findByExpirationDateBetween(now, oneMonthLater);
-
-        for (DrugsEntity drug : expiringDrugs) {
-            if (Boolean.TRUE.equals(drug.getAlertSent())) {
-                continue;
-            }
-
-            String subject = "📢 Lek bliski terminu ważności";
-            String body = String.format("""
-                Nazwa leku: %s
-                Termin ważności: %s
-                Opis: %s
-                """, drug.getDrugsName(), drug.getExpirationDate().toLocalDate(), drug.getDrugsDescription());
-
-            emailService.sendEmail("djdefkon@gmail.com", subject, body);
-            emailService.sendEmail("paula.konarska@gmail.com", subject, body);
-            drug.setAlertSent(true);
-            drugsRepository.save(drug);
-        }
+        sendExpiryAlertEmails(now, oneMonthLater);
     }
 
     public DrugStatisticsDTO getDrugStatistics() {

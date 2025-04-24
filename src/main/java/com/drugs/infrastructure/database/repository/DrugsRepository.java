@@ -30,10 +30,15 @@ public interface DrugsRepository extends JpaRepository<DrugsEntity, Integer> {
     List<DrugsEntity> findByExpirationDateBetween(OffsetDateTime now, OffsetDateTime oneMonthLater);
 
     long countByExpirationDateBefore(OffsetDateTime now);
-    
+
     long countByAlertSentTrue();
 
     @Query("SELECT d.drugsForm.name, COUNT(d) FROM DrugsEntity d GROUP BY d.drugsForm.name")
     List<Object[]> countGroupedByForm();
+
+    List<DrugsEntity> findByExpirationDateBetweenAndAlertSentFalse(
+            OffsetDateTime start,
+            OffsetDateTime end
+    );
 
 }
