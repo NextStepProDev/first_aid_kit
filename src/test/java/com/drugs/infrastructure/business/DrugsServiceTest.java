@@ -134,18 +134,18 @@ class DrugsServiceTest {
         when(drugsRepository.countByAlertSentTrue()).thenReturn(2L);
         when(drugsRepository.countGroupedByForm()).thenReturn(
                 java.util.List.of(
-                        new Object[]{DrugsFormDTO.PILLS.name(), 5L},
-                        new Object[]{DrugsFormDTO.SYRUP.name(), 3L}
+                        new Object[]{"PILLS", 5L},
+                        new Object[]{"SYRUP", 3L}
                 )
         );
 
         DrugStatisticsDTO result = drugsService.getDrugStatistics();
 
-        assertThat(result.getTotalDrugs()).isEqualTo(10);
-        assertThat(result.getExpiredDrugs()).isEqualTo(4);
-        assertThat(result.getActiveDrugs()).isEqualTo(6); // 10 - 4
-        assertThat(result.getAlertSentCount()).isEqualTo(2);
-        assertThat(result.getDrugsByForm().get("PILLS")).isEqualTo(5);
-        assertThat(result.getDrugsByForm().get("SYRUP")).isEqualTo(3);
+        assertThat(result.getTotalDrugs()).isEqualTo(10L);
+        assertThat(result.getExpiredDrugs()).isEqualTo(4L);
+        assertThat(result.getActiveDrugs()).isEqualTo(6L); // 10 - 4
+        assertThat(result.getAlertSentCount()).isEqualTo(2L);
+        assertThat(result.getDrugsByForm()).containsEntry("PILLS", 5L);
+        assertThat(result.getDrugsByForm()).containsEntry("SYRUP", 3L);
     }
 }

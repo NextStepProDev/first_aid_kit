@@ -125,6 +125,10 @@ public class DrugsService {
         List<DrugsEntity> expiringDrugs = drugsRepository.findByExpirationDateBetween(now, oneMonthLater);
 
         for (DrugsEntity drug : expiringDrugs) {
+            if (Boolean.TRUE.equals(drug.getAlertSent())) {
+                continue;
+            }
+
             String subject = "📢 Lek bliski terminu ważności";
             String body = String.format("""
                 Nazwa leku: %s
@@ -132,9 +136,10 @@ public class DrugsService {
                 Opis: %s
                 """, drug.getDrugsName(), drug.getExpirationDate().toLocalDate(), drug.getDrugsDescription());
 
-            // Wyślij na obie skrzynki
             emailService.sendEmail("djdefkon@gmail.com", subject, body);
             emailService.sendEmail("paula.konarska@gmail.com", subject, body);
+            drug.setAlertSent(true);
+            drugsRepository.save(drug);
         }
     }
 

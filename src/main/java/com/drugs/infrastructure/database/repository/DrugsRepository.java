@@ -16,8 +16,6 @@ import java.util.Optional;
 @Repository
 public interface DrugsRepository extends JpaRepository<DrugsEntity, Integer> {
 
-    Optional<DrugsEntity> findByDrugsNameIgnoreCase(String drugsName);
-
     Page<DrugsEntity> findAll(Pageable pageable);
 
     List<DrugsEntity> findAllByDrugsNameIgnoreCase(String name);
@@ -32,9 +30,7 @@ public interface DrugsRepository extends JpaRepository<DrugsEntity, Integer> {
     List<DrugsEntity> findByExpirationDateBetween(OffsetDateTime now, OffsetDateTime oneMonthLater);
 
     long countByExpirationDateBefore(OffsetDateTime now);
-
-    long countByExpirationDateAfter(OffsetDateTime now);
-
+    
     long countByAlertSentTrue();
 
     @Query("SELECT d.drugsForm.name, COUNT(d) FROM DrugsEntity d GROUP BY d.drugsForm.name")
