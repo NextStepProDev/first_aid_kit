@@ -9,6 +9,7 @@ import com.drugs.infrastructure.util.DateUtils;
 import lombok.AllArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -167,5 +168,12 @@ public class DrugsService {
                         arr -> (String) arr[0],
                         arr -> ((Number) arr[1]).longValue()
                 ));
+    }
+
+    public List<DrugsDTO> getAllSorted(String sortBy) {
+        Sort sort = Sort.by(sortBy).ascending(); // można dodać opcję descending jako rozszerzenie
+        return drugsRepository.findAll(sort).stream()
+                .map(drugsMapper::mapToDTO)
+                .toList();
     }
 }

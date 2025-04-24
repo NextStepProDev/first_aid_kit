@@ -154,4 +154,14 @@ public class DrugsController {
     public DrugStatisticsDTO getDrugStatistics() {
         return drugsService.getDrugStatistics();
     }
+
+    @GetMapping("/sorted")
+    @Operation(
+        summary = "Get sorted drugs",
+        description = "Returns a list of drugs sorted by the specified field. " +
+                      "Example values: 'drugsName', 'expirationDate', 'drugsForm'"
+    )
+    public List<DrugsDTO> getAllSorted(@RequestParam(defaultValue = "drugsName") String sortBy) {
+        return drugsService.getAllSorted(sortBy);
+    }
 }
