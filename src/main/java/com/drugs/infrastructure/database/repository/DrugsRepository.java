@@ -11,6 +11,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.time.OffsetDateTime;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -22,7 +23,7 @@ public interface DrugsRepository extends JpaRepository<DrugsEntity, Integer> {
 
     Page<DrugsEntity> findAll(Pageable pageable);
 
-    List<DrugsEntity> findAllByDrugsNameIgnoreCase(String name);
+//    List<DrugsEntity> findAllByDrugsNameIgnoreCase(String name);
 
     List<DrugsEntity> findByExpirationDateBetweenOrderByExpirationDateAsc(
             OffsetDateTime start,
@@ -46,4 +47,6 @@ public interface DrugsRepository extends JpaRepository<DrugsEntity, Integer> {
     default void logQuery(String query) {
         logger.info("Executing query: {}", query);
     }
+
+    List<DrugsEntity> findByDrugsNameContainingIgnoreCase(String name);
 }

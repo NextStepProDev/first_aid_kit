@@ -10,8 +10,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(DrugNotFoundException.class)
     public ResponseEntity<String> handleDrugNotFound(DrugNotFoundException ex) {
-        // Logowanie błędu
-        System.err.println("Error: " + ex.getMessage());
+        ex.getMessage();
         return new ResponseEntity<>(ex.getMessage(), HttpStatus.NOT_FOUND);
     }
 

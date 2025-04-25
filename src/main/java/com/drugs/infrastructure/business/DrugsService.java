@@ -75,7 +75,7 @@ public class DrugsService {
     public List<DrugsDTO> getDrugsByName(String name) {
         logger.info("Fetching drugs with name: {}", name);
 
-        List<DrugsDTO> drugs = drugsRepository.findAllByDrugsNameIgnoreCase(name).stream()
+        List<DrugsDTO> drugs = drugsRepository.findByDrugsNameContainingIgnoreCase(name).stream()
                 .map(drugsMapper::mapToDTO)
                 .collect(Collectors.toList());
 
