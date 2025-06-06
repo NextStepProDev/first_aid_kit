@@ -14,6 +14,19 @@ spring:
           starttls:
             enable: true
 
+  cache:
+    type: caffeine
+    cache-names:
+      - allDrugs
+      - drugById
+      - drugsByName
+      - expiredDrugs
+      - expiringDrugs
+      - simpleDrugs
+      - sortedDrugs
+    caffeine:
+      spec: maximumSize=150,expireAfterWrite=60m
+
   datasource:
     url: jdbc:postgresql://localhost:5432/first_aid_kit
     username: postgres

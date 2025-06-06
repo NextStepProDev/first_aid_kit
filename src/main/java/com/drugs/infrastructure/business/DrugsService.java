@@ -10,6 +10,8 @@ import com.drugs.infrastructure.util.DateUtils;
 import lombok.AllArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -32,6 +34,7 @@ public class DrugsService {
     private final EmailService emailService;
     private static final Logger logger = LoggerFactory.getLogger(DrugsService.class);
 
+    @CacheEvict(value = {"allDrugs", "simpleDrugs", "drugById", "drugsByName", "expiredDrugs", "expiringDrugs", "sortedDrugs"}, allEntries = true)
     public void addNewDrug(DrugsRequestDTO dto) {
         logger.info("Attempting to add a new drug: {}", dto.getName());
 
@@ -46,6 +49,7 @@ public class DrugsService {
         logger.info("Successfully added the drug: {}", dto.getName());
     }
 
+    @CacheEvict(value = {"allDrugs", "simpleDrugs", "drugById", "drugsByName", "expiredDrugs", "expiringDrugs", "sortedDrugs"}, allEntries = true)
     public void deleteDrug(Integer id) {
         logger.info("Attempting to delete drug with ID: {}", id);
         DrugsEntity entity = drugsRepository.findById(id)
@@ -55,6 +59,7 @@ public class DrugsService {
         logger.info("Successfully deleted drug with ID: {}", id);
     }
 
+    @CacheEvict(value = {"allDrugs", "simpleDrugs", "drugById", "drugsByName", "expiredDrugs", "expiringDrugs", "sortedDrugs"}, allEntries = true)
     public DrugsDTO updateDrug(Integer id, DrugsRequestDTO dto) {
         logger.info("Attempting to update drug with ID: {}", id);
 
@@ -72,6 +77,7 @@ public class DrugsService {
         return drugsMapper.mapToDTO(saved);
     }
 
+    @Cacheable(value = "drugsByName", key = "#name")
     public List<DrugsDTO> getDrugsByName(String name) {
         logger.info("Fetching drugs with name: {}", name);
 
@@ -83,6 +89,7 @@ public class DrugsService {
         return drugs;
     }
 
+    @Cacheable(value = "expiringDrugs", key = "#year + '-' + #month")
     public List<DrugsDTO> getDrugsExpiringSoon(int year, int month) {
         logger.info("Fetching drugs expiring soon between year: {} and month: {}", year, month);
         OffsetDateTime now = OffsetDateTime.now();
@@ -94,6 +101,7 @@ public class DrugsService {
         return drugs;
     }
 
+    @Cacheable("expiredDrugs")
     public List<DrugsDTO> getExpiredDrugs() {
         logger.info("Fetching expired drugs.");
 
@@ -108,6 +116,7 @@ public class DrugsService {
         return expiredDrugs;
     }
 
+    @Cacheable("simpleDrugs")
     public List<DrugSimpleDTO> getAllDrugsSimple() {
         logger.info("Fetching all simple drug data.");
         List<DrugSimpleDTO> drugs = drugsRepository.findAll().stream()
@@ -117,6 +126,7 @@ public class DrugsService {
         return drugs;
     }
 
+    @Cacheable(value = "drugById", key = "#id")
     public DrugsDTO getDrugById(Integer id) {
         logger.info("Fetching drug with ID: {}", id);
         DrugsEntity entity = null;
@@ -148,6 +158,7 @@ public class DrugsService {
         return drugs;
     }
 
+    @Cacheable("allDrugs")
     public List<DrugsDTO> getAllDrugs() {
         return drugsRepository.findAll()
                 .stream()
@@ -224,6 +235,7 @@ public class DrugsService {
                 ));
     }
 
+    @Cacheable(value = "sortedDrugs", key = "#sortBy")
     public List<DrugsDTO> getAllSorted(String sortBy) {
         Sort sort = Sort.by(sortBy).ascending(); // można dodać opcję descending jako rozszerzenie
         return drugsRepository.findAll(sort).stream()

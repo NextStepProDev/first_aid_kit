@@ -2,7 +2,7 @@
 
 This is a Java-based application designed to manage a database of drugs. The application includes functionality for managing drug records, including creating, updating, deleting, and querying drugs. It also supports email alerts for drugs that are nearing their expiration dates.
 
-## Features
+## Key Features
 
 - **CRUD Operations**: 
   - Add new drugs to the system.
@@ -22,6 +22,9 @@ This is a Java-based application designed to manage a database of drugs. The app
   - Update a drug (`PUT /api/drugs`).
   - Delete a drug (`DELETE /api/drugs/{id}`).
   - Get drug statistics (`GET /api/drugs/statistics`).
+
+- **Caching for performance**:
+  - Frequently accessed drug data is cached to reduce database load and improve response time.
   
 ## Prerequisites
 
@@ -33,6 +36,14 @@ Before running this application, ensure you have the following installed:
 - Docker (optional, for containerized setup)
 
 ## Setup
+
+## Performance Optimizations
+
+The application uses Spring Cache with a Caffeine backend to improve performance:
+- Caches method results such as drug listings and queries.
+- Cached entries expire automatically after 10 minutes.
+- Write operations (`POST`, `PUT`, `DELETE`) clear relevant caches to maintain consistency.
+- Configuration is managed via `spring.cache.caffeine.spec` in `application.yml`.
 
 1. Clone the repository:
    ```bash
