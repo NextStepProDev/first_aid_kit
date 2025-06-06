@@ -27,6 +27,8 @@ This is a Java-based application designed to manage a database of drugs and expo
   - Get expired drugs (`GET /api/drugs/expired`)
   - Get drugs expiring in a specific month (`GET /api/drugs/expiring?year={year}&month={month}`)
   - Get sorted drugs (`GET /api/drugs/sorted?sortBy={field}`)
+  - Send test email (`GET /api/email/test`)
+  - Send expiry alert emails (`GET /api/email/alert`)
 
 - **Caching for performance**:
   - Frequently accessed drug data is cached to reduce database load and improve response time.
