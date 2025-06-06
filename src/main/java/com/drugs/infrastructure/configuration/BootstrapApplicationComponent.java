@@ -38,11 +38,11 @@ public class BootstrapApplicationComponent implements ApplicationListener<Contex
         resetSequence();
 
         insertDrug("Altacet", DrugsFormDTO.GEL, 2025, 4, "Lek przeciwbólowy w formie żelu.");
-        insertDrug("Centrum Junior", DrugsFormDTO.PILLS, 2025, 4, "Witaminy dla dzieci");
+//        insertDrug("Centrum Junior", DrugsFormDTO.PILLS, 2025, 4, "Witaminy dla dzieci");
         insertDrug("Helicid 20", DrugsFormDTO.PILLS, 2025, 6, "lek zawierający omeprazol, inhibitor pompy protonowej, który zmniejsza wydzielanie " +
                 "kwasu solnego w żołądku. Stosowany jest w leczeniu choroby refluksowej przełyku, owrzodzeń " +
                 "żołądka i dwunastnicy, eradykacji Helicobacter pylori");
-//        insertDrug("Xylometazolin", DrugsFormDTO.DROPS, 2025, 7, "pełne, nieotwarte opakowanie, do nosa");
+        insertDrug("Xylometazolin", DrugsFormDTO.DROPS, 2025, 7, "pełne otwarte opakowanie, do nosa");
         insertDrug("Procto-Hemolan", DrugsFormDTO.CREAM, 2025, 7, "Krem doodbytniczy");
         insertDrug("Perskindol", DrugsFormDTO.GEL, 2025, 12, "Chłodząco - rozgrzewający na bóle mięśni");
         insertDrug("Zinnat", DrugsFormDTO.PILLS, 2026, 1, "stosowany w leczeniu różnorodnych zakażeń bakteryjnych u dorosłych i dzieci. " +
@@ -57,7 +57,7 @@ public class BootstrapApplicationComponent implements ApplicationListener<Contex
         insertDrug("Proktosedon", DrugsFormDTO.SUPPOSITORIES, 2026, 9, "hemoroidy");
         insertDrug("Frenadol", DrugsFormDTO.SACHETS, 2026, 10, "Paracetamol, kofeina i inne");
         insertDrug("Ibuprom", DrugsFormDTO.PILLS, 2026, 12, "nie trzeba przedstawiać, pełny prawie");
-//        insertDrug("Septanazal", DrugsFormDTO.DROPS, 2027, 1, "Septanazal dla dorosłych obkurcza naczynia krwionośne nosa i zmniejsza obrzęk błony śluzowej nosa oraz ilość wydzieliny. Łagodzi uczucie zatkanego nosa.");
+        insertDrug("Septanazal", DrugsFormDTO.DROPS, 2027, 1, "Septanazal dla dorosłych obkurcza naczynia krwionośne nosa i zmniejsza obrzęk błony śluzowej nosa oraz ilość wydzieliny. Łagodzi uczucie zatkanego nosa.");
         insertDrug("Biofenac 100mg", DrugsFormDTO.PILLS, 2027, 2, "końcówka, NLPZ stosowany w leczeniu bólu i stanów zapalnych związanych z chorobami " +
                 "reumatycznymi i zwyrodnieniowymi stawów, takimi jak osteoartroza, reumatoidalne zapalenie " +
                 "stawów oraz zesztywniające zapalenie stawów kręgosłupa.");
