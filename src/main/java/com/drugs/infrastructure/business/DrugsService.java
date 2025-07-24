@@ -28,11 +28,11 @@ import java.util.stream.Collectors;
 @AllArgsConstructor
 public class DrugsService {
 
+    private static final Logger logger = LoggerFactory.getLogger(DrugsService.class);
     private final DrugsRepository drugsRepository;
     private final DrugsFormService drugsFormService;
     private final DrugsMapper drugsMapper;
     private final EmailService emailService;
-    private static final Logger logger = LoggerFactory.getLogger(DrugsService.class);
 
     @CacheEvict(value = {"allDrugs", "simpleDrugs", "drugById", "drugsByName", "expiredDrugs", "expiringDrugs", "sortedDrugs"}, allEntries = true)
     public void addNewDrug(DrugsRequestDTO dto) {
@@ -177,12 +177,20 @@ public class DrugsService {
             logger.info("Sending alert for drug: {}", drug.getDrugsName());
 
             if (!drug.getAlertSent()) {
+                String subject = "💊 Drug Expiry Alert";
+                String message = """
+                        ⚠️ Attention!
+                        
+                        The drug *%s* in your first aid kit is about to expire! ⏳
+                        Please check it as soon as possible before it's too late! ❌
+                        
+                        🗓️ Expiration date: %s
+                        
+                        Take care of your health! ❤️
+                        """.formatted(drug.getDrugsName(), drug.getExpirationDate().toLocalDate());
                 try {
-                    // Wysyłanie e-maila
-                    emailService.sendEmail("recipient@example.com", // W przypadku testów może to być mockowane
-                            "Drug Expiry Alert",
-                            "This is a reminder that the drug " + drug.getDrugsName() + " is about to expire."
-                    );
+                    emailService.sendEmail("djdefkon@gmail.com", subject, message);
+                    emailService.sendEmail("paula.konarska@gmail.com", subject, message);
 
                     // Markujemy lek jako powiadomiony
                     drug.setAlertSent(true);

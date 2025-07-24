@@ -34,10 +34,7 @@ public class DrugsEntity {
     @Column(name = "drugs_description")
     private String drugsDescription;
 
-    @Column(name = "alert_sent")
-    private Boolean alertSent;
-
-    protected boolean canEqual(final Object other) {
-        return other instanceof DrugsEntity;
-    }
+    @Builder.Default
+    @Column(name = "alert_sent", nullable = false)
+    private Boolean alertSent = false;
 }

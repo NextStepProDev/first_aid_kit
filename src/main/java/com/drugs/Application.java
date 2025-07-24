@@ -24,7 +24,6 @@ public class Application implements CommandLineRunner {
 
     @PreDestroy
     public void onExit() {
-        // Logowanie przy zakończeniu działania aplikacji
         logger.info("Application is shutting down.");
     }
 }

@@ -219,7 +219,7 @@ class DrugsServiceTest {
         drugsService.sendExpiryAlertEmails(start, end);
 
         // Weryfikacja
-        verify(mailService, times(1)).sendEmail(anyString(), anyString(), anyString());
+        verify(mailService, times(2)).sendEmail(anyString(), anyString(), anyString());
 
         ArgumentCaptor<DrugsEntity> savedCaptor = ArgumentCaptor.forClass(DrugsEntity.class);
         verify(drugsRepository).save(savedCaptor.capture());

@@ -1,9 +1,8 @@
 package com.drugs.infrastructure.util;
 
-import com.drugs.controller.dto.DrugsDTO;
-
-import java.time.*;
-import java.util.List;
+import java.time.OffsetDateTime;
+import java.time.YearMonth;
+import java.time.ZoneId;
 
 public class DateUtils {
 
@@ -17,7 +16,9 @@ public class DateUtils {
     }
 
     public static OffsetDateTime buildStartOfMonth(int year, int month) {
-        LocalDate firstDay = YearMonth.of(year, month).atDay(1);
-        return firstDay.atStartOfDay().atOffset(ZoneOffset.UTC);
+        return YearMonth.of(year, month)
+                .atDay(1)
+                .atStartOfDay(EUROPE_WARSAW)
+                .toOffsetDateTime();
     }
 }

@@ -34,6 +34,6 @@ public class EmailController {
 
         logger.info("Expiry alert emails have been sent.");
 
-        return "Alerty zostały wysłane";
+        return "Expiry alert emails have been sent";
     }
 }

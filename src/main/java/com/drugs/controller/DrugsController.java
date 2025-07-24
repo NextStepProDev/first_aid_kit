@@ -6,6 +6,7 @@ import com.drugs.infrastructure.database.entity.DrugsEntity;
 import com.drugs.infrastructure.database.repository.DrugsRepository;
 import com.drugs.infrastructure.pdf.PdfExportService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -25,6 +26,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+@Tag(name = "Drugs API")
 @RestController
 @RequestMapping("/api/drugs")
 @RequiredArgsConstructor
