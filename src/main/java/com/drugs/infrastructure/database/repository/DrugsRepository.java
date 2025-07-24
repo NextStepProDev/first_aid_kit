@@ -35,10 +35,7 @@ public interface DrugsRepository extends JpaRepository<DrugsEntity, Integer> {
     @Query("SELECT d.drugsForm.name, COUNT(d) FROM DrugsEntity d GROUP BY d.drugsForm.name")
     List<Object[]> countGroupedByForm();
 
-    List<DrugsEntity> findByExpirationDateBetweenAndAlertSentFalse(
-            OffsetDateTime start,
-            OffsetDateTime end
-    );
+    List<DrugsEntity> findByExpirationDateLessThanEqualAndAlertSentFalse(OffsetDateTime date);
 
     default void logQuery(String query) {
         logger.info("Executing query: {}", query);

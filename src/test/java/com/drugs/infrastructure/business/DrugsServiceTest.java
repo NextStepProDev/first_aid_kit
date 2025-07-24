@@ -192,39 +192,36 @@ class DrugsServiceTest {
 
     @Test
     void sendMailAlert_shouldSendEmailAndMarkAlertSent() {
+        // given: przygotowanie leku z datą ważności i bez wysłanego alertu
         DrugsEntity drug = new DrugsEntity();
         drug.setDrugsId(1);
         drug.setDrugsName("Old Drug");
-
-        // Zakładając, że expiracja to 2025-05-15
-        OffsetDateTime expiration = DateUtils.buildExpirationDate(2025, 5);
-        OffsetDateTime start = DateUtils.buildStartOfMonth(2025, 5);
         OffsetDateTime end = DateUtils.buildExpirationDate(2025, 5);
-
-        drug.setExpirationDate(expiration);
+        drug.setExpirationDate(end);
         drug.setAlertSent(false);
         drug.setDrugsForm(DrugsFormEntity.builder().name("PILLS").build());
 
-        // Mockowanie repozytorium
-        when(drugsRepository.findByExpirationDateBetweenAndAlertSentFalse(eq(start), eq(end)))
+        // mockowanie repozytorium – zwróci lek zbliżający się do przeterminowania
+        when(drugsRepository.findByExpirationDateLessThanEqualAndAlertSentFalse(eq(end)))
                 .thenReturn(List.of(drug));
 
-        // Mockowanie metody wysyłania e-maila
+        // mockowanie metody wysyłającej e-mail
         doNothing().when(mailService).sendEmail(any(), any(), any());
 
-        // Mockowanie zapisania leku
+        // mockowanie zapisu leku po wysłaniu alertu
         when(drugsRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        // Wysyłanie alertu
-        drugsService.sendExpiryAlertEmails(start, end);
+        // when: wykonanie metody wysyłającej alerty
+        drugsService.sendExpiryAlertEmails(2025, 5);
 
-        // Weryfikacja
+        // then: sprawdzenie, że e-mail został wysłany dwa razy (na dwa adresy)
         verify(mailService, times(2)).sendEmail(anyString(), anyString(), anyString());
 
+        // sprawdzenie, że lek został zapisany
         ArgumentCaptor<DrugsEntity> savedCaptor = ArgumentCaptor.forClass(DrugsEntity.class);
         verify(drugsRepository).save(savedCaptor.capture());
 
-        // Sprawdzamy, czy alert został ustawiony na true
+        // sprawdzenie, że znacznik alertu został ustawiony
         DrugsEntity saved = savedCaptor.getValue();
         assertThat(saved.getAlertSent()).isTrue();
     }

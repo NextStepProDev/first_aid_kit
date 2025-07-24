@@ -129,7 +129,7 @@ public class DrugsService {
     @Cacheable(value = "drugById", key = "#id")
     public DrugsDTO getDrugById(Integer id) {
         logger.info("Fetching drug with ID: {}", id);
-        DrugsEntity entity = null;
+        DrugsEntity entity;
         try {
             entity = drugsRepository.findById(id)
                     .orElseThrow(() -> new DrugNotFoundException("Drug not found with ID: " + id));
@@ -166,14 +166,15 @@ public class DrugsService {
                 .toList();
     }
 
-    public void sendExpiryAlertEmails(OffsetDateTime start, OffsetDateTime end) {
-        logger.info("Sending expiry alert emails for drugs expiring between {} and {}", start, end);
+    public void sendExpiryAlertEmails(int year, int month) {
+        logger.info("Sending expiry alert emails for drugs expiring up to {}/{}", year, month);
 
-        List<DrugsEntity> drugs = drugsRepository.findByExpirationDateBetweenAndAlertSentFalse(start, end);
+        OffsetDateTime endInclusive = DateUtils.buildExpirationDate(year, month);
+        List<DrugsEntity> expiringDrugs = drugsRepository.findByExpirationDateLessThanEqualAndAlertSentFalse(endInclusive);
 
-        logger.info("Found {} drugs to send alerts for", drugs.size());
+        logger.info("Found {} drugs to send alerts for", expiringDrugs.size());
 
-        for (DrugsEntity drug : drugs) {
+        for (DrugsEntity drug : expiringDrugs) {
             logger.info("Sending alert for drug: {}", drug.getDrugsName());
 
             if (!drug.getAlertSent()) {
@@ -192,7 +193,6 @@ public class DrugsService {
                     emailService.sendEmail("djdefkon@gmail.com", subject, message);
                     emailService.sendEmail("paula.konarska@gmail.com", subject, message);
 
-                    // Markujemy lek jako powiadomiony
                     drug.setAlertSent(true);
                     drugsRepository.save(drug);
                     logger.info("Alert sent and drug marked as notified: {}", drug.getDrugsName());
@@ -209,7 +209,7 @@ public class DrugsService {
         logger.info("Sending default expiry alert emails.");
         OffsetDateTime now = OffsetDateTime.now();
         OffsetDateTime oneMonthLater = now.plusMonths(1);
-        sendExpiryAlertEmails(now, oneMonthLater);
+        sendExpiryAlertEmails(oneMonthLater.getYear(), oneMonthLater.getMonthValue());
     }
 
     public DrugStatisticsDTO getDrugStatistics() {
