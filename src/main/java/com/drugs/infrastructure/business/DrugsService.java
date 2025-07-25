@@ -3,6 +3,7 @@ package com.drugs.infrastructure.business;
 import com.drugs.controller.dto.*;
 import com.drugs.controller.exception.DrugNotFoundException;
 import com.drugs.infrastructure.database.entity.DrugsEntity;
+import com.drugs.infrastructure.database.entity.DrugsFormEntity;
 import com.drugs.infrastructure.database.mapper.DrugsMapper;
 import com.drugs.infrastructure.database.repository.DrugsRepository;
 import com.drugs.infrastructure.mail.EmailService;
@@ -38,9 +39,11 @@ public class DrugsService {
     public void addNewDrug(DrugsRequestDTO dto) {
         logger.info("Attempting to add a new drug: {}", dto.getName());
 
+        DrugsFormEntity form = drugsFormService.resolve(DrugsFormDTO.valueOf(dto.getForm()));
+
         DrugsEntity entity = DrugsEntity.builder()
                 .drugsName(dto.getName())
-                .drugsForm(drugsFormService.resolve(DrugsFormDTO.valueOf(dto.getForm())))
+                .drugsForm(form)
                 .expirationDate(DateUtils.buildExpirationDate(dto.getExpirationYear(), dto.getExpirationMonth()))
                 .drugsDescription(dto.getDescription())
                 .build();

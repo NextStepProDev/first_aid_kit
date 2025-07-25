@@ -44,7 +44,7 @@ public class GlobalExceptionHandlerTest {
         // Wywołanie metody handleGeneralException
         ResponseEntity<String> response = globalExceptionHandler.handleGeneralException(exception);
 
-        // Sprawdzanie czy odpowiedź ma poprawny status i treść
+        // Sprawdzanie, czy odpowiedź ma poprawny status i treść
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
         assertEquals("An error occurred", response.getBody());
     }

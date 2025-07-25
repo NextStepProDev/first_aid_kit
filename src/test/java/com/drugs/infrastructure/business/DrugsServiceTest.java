@@ -46,12 +46,13 @@ class DrugsServiceTest {
     @Test
     void addNewDrug_shouldSaveDrug() {
         // given
-        DrugsRequestDTO dto = new DrugsRequestDTO("Ibuprofen", "GEL", 2025, 5, "Painkiller");
+        DrugsFormDTO gel = DrugsFormDTO.GEL;
+        DrugsRequestDTO dto = new DrugsRequestDTO(
+                "Ibuprofen", gel.name(), 2025, 5, "Painkiller"
+        );
 
-        DrugsFormDTO drugsFormDTO = DrugsFormDTO.GEL;
-        DrugsEntity resolvedForm = DrugsEntity.builder().drugsId(1).build();
-
-        when(drugsFormService.resolve(DrugsFormDTO.GEL)).thenReturn(resolvedForm.getDrugsForm());
+        DrugsFormEntity form = DrugsFormEntity.builder().id(1).name("GEL").build();
+        when(drugsFormService.resolve(gel)).thenReturn(form);
 
         // when
         drugsService.addNewDrug(dto);
@@ -62,7 +63,7 @@ class DrugsServiceTest {
         DrugsEntity savedEntity = captor.getValue();
 
         assertThat(savedEntity.getDrugsName()).isEqualTo("Ibuprofen");
-        assertThat(savedEntity.getDrugsForm()).isEqualTo(resolvedForm.getDrugsForm());
+        assertThat(savedEntity.getDrugsForm()).isEqualTo(form);
         assertThat(savedEntity.getExpirationDate()).isEqualTo(DateUtils.buildExpirationDate(2025, 5));
         assertThat(savedEntity.getDrugsDescription()).isEqualTo("Painkiller");
     }

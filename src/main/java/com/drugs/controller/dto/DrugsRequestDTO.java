@@ -1,10 +1,13 @@
 package com.drugs.controller.dto;
 
+import com.drugs.infrastructure.validation.NotBeforeCurrentYear;
 import com.drugs.infrastructure.validation.ValueOfEnum;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.*;
-
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Data
 @Schema(description = "Request object for creating a new drug")
@@ -23,7 +26,7 @@ public class DrugsRequestDTO {
     private String form;
 
     @NotNull(message = "Expiration year must not be null")
-    @Min(value = 2025, message = "Expiration year must be 2025 or later")
+    @NotBeforeCurrentYear
     @Schema(description = "Expiration year of the drug", example = "2025")
     private Integer expirationYear;
 
