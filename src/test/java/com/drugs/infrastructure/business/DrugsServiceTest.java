@@ -44,6 +44,54 @@ class DrugsServiceTest {
     private DrugsService drugsService;
 
     @Test
+    void getDrugById_shouldThrowWhenNotFound() {
+        // given
+        Integer drugId = 999;
+        DrugsEntity result = new DrugsEntity();
+        result.setDrugsId(999);
+        result.setDrugsName("Unknown Drug");
+
+        when(drugsRepository.findById(drugId)).thenReturn(Optional.empty());
+
+        // when / then
+        assertThrows(RuntimeException.class, () -> drugsService.getDrugById(drugId));
+        ArgumentCaptor<Integer> captor = ArgumentCaptor.forClass(Integer.class);
+        verify(drugsRepository).findById(captor.capture());
+        Integer capturedId = captor.getValue();
+        assertThat(capturedId).isEqualTo(drugId);
+        // Verify that the repository was called with the correct drugId
+    }
+
+    @Test
+    void getDrugById_shouldReturnDrugDTO_whenFound() {
+        // given
+        Integer drugId = 1;
+        DrugsEntity entity = new DrugsEntity();
+        entity.setDrugsId(drugId);
+        entity.setDrugsName("Aspirin");
+        entity.setExpirationDate(DateUtils.buildExpirationDate(2025, 1));
+        entity.setDrugsDescription("Painkiller");
+
+        when(drugsRepository.findById(drugId)).thenReturn(Optional.of(entity));
+        when(drugsMapper.mapToDTO(entity)).thenReturn(DrugsDTO.builder()
+                .drugsId(drugId)
+                .drugsName("Aspirin")
+                .expirationDate(DateUtils.buildExpirationDate(2025, 1))
+                .drugsDescription("Painkiller")
+                .build());
+
+        // when
+        DrugsDTO result = drugsService.getDrugById(drugId);
+
+        // then
+        assertThat(result).isNotNull();
+        assertThat(result.getDrugsName()).isEqualTo("Aspirin");
+        assertThat(result.getExpirationDate()).isEqualTo(DateUtils.buildExpirationDate(2025, 1));
+        assertThat(result.getDrugsDescription()).isEqualTo("Painkiller");
+        verify(drugsMapper).mapToDTO(entity);
+    }
+
+    @Test
     void addNewDrug_shouldSaveDrug() {
         // given
         DrugsFormDTO gel = DrugsFormDTO.GEL;
@@ -51,7 +99,7 @@ class DrugsServiceTest {
                 "Ibuprofen", gel.name(), 2025, 5, "Painkiller"
         );
 
-        DrugsFormEntity form = DrugsFormEntity.builder().id(1).name("GEL").build();
+        DrugsFormEntity form = DrugsFormEntity.builder().id(1).name(DrugsFormDTO.GEL.name()).build();
         when(drugsFormService.resolve(gel)).thenReturn(form);
 
         // when
