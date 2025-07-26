@@ -1,6 +1,5 @@
 package com.drugs.infrastructure.database.entity;
 
-import com.drugs.controller.dto.DrugsFormDTO;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -29,8 +28,4 @@ public class DrugsFormEntity {
     @OneToMany(mappedBy = "drugsForm", fetch = FetchType.LAZY)
     @JsonIgnore
     private Set<DrugsEntity> drugs;
-
-    public DrugsFormDTO toDTO() {
-        return DrugsFormDTO.valueOf(this.name);
-    }
 }

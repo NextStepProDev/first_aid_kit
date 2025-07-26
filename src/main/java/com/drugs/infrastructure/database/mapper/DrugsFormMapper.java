@@ -11,11 +11,4 @@ public interface DrugsFormMapper {
         if (entity == null) return null;
         return DrugsFormDTO.valueOf(entity.getName());
     }
-
-    default DrugsFormEntity fromDTO(DrugsFormDTO dto) {
-        if (dto == null) return null;
-        return DrugsFormEntity.builder()
-                .name(dto.name())
-                .build();
-    }
 }

@@ -23,6 +23,7 @@ public class Application implements CommandLineRunner {
 //	http://localhost:8080/swagger-ui.html
 
     @PreDestroy
+    @SuppressWarnings("unused")
     public void onExit() {
         logger.info("Application is shutting down.");
     }

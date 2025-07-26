@@ -12,6 +12,7 @@ import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
+@SuppressWarnings("unused")
 public class ZajavkaUserDetailService implements UserDetailsService {
 
     private final UserRepository userRepository;

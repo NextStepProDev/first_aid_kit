@@ -14,11 +14,4 @@ public class DateUtils {
                 .atStartOfDay(EUROPE_WARSAW)
                 .toOffsetDateTime();
     }
-
-    public static OffsetDateTime buildStartOfMonth(int year, int month) {
-        return YearMonth.of(year, month)
-                .atDay(1)
-                .atStartOfDay(EUROPE_WARSAW)
-                .toOffsetDateTime();
-    }
 }

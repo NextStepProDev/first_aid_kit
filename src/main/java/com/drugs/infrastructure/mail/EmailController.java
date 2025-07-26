@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/email")
 @RequiredArgsConstructor
+@SuppressWarnings("unused")
 public class EmailController {
 
     private static final Logger logger = LoggerFactory.getLogger(EmailController.class);
@@ -19,6 +20,7 @@ public class EmailController {
     private final EmailService emailService;
 
     @GetMapping("/test")
+    @SuppressWarnings("unused")
     public String sendTestEmail() {
         emailService.sendEmail("djdefkon@gmail.com", "Test mail z aplikacji", "Działa! 🚀");
         emailService.sendEmail("paula.konarska@gmail.com", "Test mail z aplikacji", "Działa! 🚀");
@@ -29,6 +31,7 @@ public class EmailController {
     }
 
     @GetMapping("/alert")
+    @SuppressWarnings("unused")
     public String sendExpiryAlerts() {
         drugsService.sendDefaultExpiryAlertEmails();
 

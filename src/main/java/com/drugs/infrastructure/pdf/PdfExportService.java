@@ -5,9 +5,10 @@ import com.lowagie.text.*;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
 import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
+import lombok.extern.slf4j.Slf4j;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -15,11 +16,36 @@ import java.util.List;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class PdfExportService {
 
     private static final Logger logger = LoggerFactory.getLogger(PdfExportService.class);
 
+    private static PdfPTable getPdfPTable(List<DrugsDTO> drugs) {
+        PdfPTable table = new PdfPTable(4);
+        table.setWidthPercentage(100);
+        table.addCell("ID");
+        table.addCell("Name");
+        table.addCell("Form");
+        table.addCell("Expiration");
+
+        for (DrugsDTO drug : drugs) {
+            table.addCell(String.valueOf(drug.getDrugsId()));
+            table.addCell(drug.getDrugsName());
+            table.addCell(drug.getDrugsForm().name());
+            table.addCell(drug.getExpirationDate().toLocalDate().toString());
+        }
+        return table;
+    }
+
+    /**
+     * Generates a PDF document containing a list of drugs.
+     *
+     * @param drugs List of drugs to include in the PDF.
+     * @return ByteArrayInputStream containing the generated PDF.
+     */
     public ByteArrayInputStream generatePdf(List<DrugsDTO> drugs) {
+
         logger.info("Starting PDF generation for drug list");
 
         Document document = new Document();
@@ -35,19 +61,7 @@ public class PdfExportService {
             document.add(title);
             document.add(Chunk.NEWLINE);
 
-            PdfPTable table = new PdfPTable(4); // 4 kolumny
-            table.setWidthPercentage(100);
-            table.addCell("ID");
-            table.addCell("Name");
-            table.addCell("Form");
-            table.addCell("Expiration");
-
-            for (DrugsDTO drug : drugs) {
-                table.addCell(String.valueOf(drug.getDrugsId()));
-                table.addCell(drug.getDrugsName());
-                table.addCell(drug.getDrugsForm().name());
-                table.addCell(drug.getExpirationDate().toLocalDate().toString());
-            }
+            PdfPTable table = getPdfPTable(drugs);
 
             document.add(table);
             document.close();

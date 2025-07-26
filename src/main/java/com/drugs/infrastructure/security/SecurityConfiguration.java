@@ -3,13 +3,13 @@ package com.drugs.infrastructure.security;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.ProviderManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -21,12 +21,11 @@ import org.springframework.security.web.SecurityFilterChain;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static org.springframework.security.config.Customizer.withDefaults;
-
 @Configuration
 @EnableWebSecurity(debug = true)
 @EnableMethodSecurity(securedEnabled = true, jsr250Enabled = true) // włącza możliwość zabezpieczenia metod na poziomie
 // klas, tak aby te metody mogły być wykorzystywane tylko przez użytkowników z uprawnieniami
+@SuppressWarnings("unused")
 public class SecurityConfiguration {
 
     @Bean
@@ -51,7 +50,7 @@ public class SecurityConfiguration {
     @Bean
     public AuthenticationManager authenticationManager(
             UserDetailsService userDetailsService,
-            PasswordEncoder passwordEncoder) throws Exception {
+            PasswordEncoder passwordEncoder) {
 
         DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider();
         authProvider.setUserDetailsService(userDetailsService);
@@ -74,7 +73,6 @@ public class SecurityConfiguration {
 //    }
 
 
-
     @Bean
     @ConditionalOnProperty(value = "spring.security.enabled", havingValue = "true", matchIfMissing = true)
     // to ustawienie jest domyślne, chyba nie trzeba tego pisać
@@ -83,13 +81,13 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests(auth -> auth
                         .anyRequest().permitAll()
                 )
-                .csrf(csrf -> csrf.disable())
+                .csrf(AbstractHttpConfigurer::disable)
                 .build();
     }
 
     @Bean
     @ConditionalOnProperty(value = "spring.security.enabled", havingValue = "false")
-    // jeżeli w propertasach ustawimy spring.security.enabled na false to będzie to oznaczało, że ten bean ma być
+    // jeżeli w property ustawimy spring.security.enabled na false to będzie to oznaczało, że ten bean ma być
     // zarejestrowany
     public SecurityFilterChain securityDisabled(HttpSecurity httpSecurity) throws Exception {
         httpSecurity
@@ -98,7 +96,6 @@ public class SecurityConfiguration {
                 );
         return httpSecurity.build();
     }
-
     //    @Bean
 //    public UserDetailsService userDetailsService() {
 //        return new InMemoryUserDetailsManager(
@@ -116,7 +113,7 @@ public class SecurityConfiguration {
                 throw new UsernameNotFoundException("User not found: " + username);
             }
 
-            // Pobranie ról użytkownika i ich konwersja na GrantedAuthority
+            // Pobranie ról użytkownika i ich konwersja na grantedauthority
             List<GrantedAuthority> authorities = userEntity.getRole().stream()
                     .map(role -> new SimpleGrantedAuthority("ROLE_" + role.getRole())) // Prefiks ROLE_
                     .collect(Collectors.toList());
