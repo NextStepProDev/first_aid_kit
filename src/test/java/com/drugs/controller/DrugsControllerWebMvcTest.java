@@ -15,6 +15,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -29,24 +30,31 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 public class DrugsControllerWebMvcTest {
 
     @Autowired
+    @SuppressWarnings("unused")
     private MockMvc mockMvc;
 
     @MockitoBean
+    @SuppressWarnings("unused")
     private DrugsRepository drugsRepository;
 
     @MockitoBean
+    @SuppressWarnings("unused")
     private DrugsFormService drugsFormService;
 
     @MockitoBean
+    @SuppressWarnings("unused")
     private DrugsMapper drugsMapper;
 
     @MockitoBean
+    @SuppressWarnings("unused")
     private EmailService emailService;
 
     @MockitoBean
+    @SuppressWarnings("unused")
     private DrugsService drugsService;
 
     @MockitoBean
+    @SuppressWarnings("unused")
     private PdfExportService pdfExportService;
 
     static Stream<org.junit.jupiter.params.provider.Arguments> formProvider() {
@@ -73,7 +81,7 @@ public class DrugsControllerWebMvcTest {
                 """.formatted(form);
 
         mockMvc.perform(
-                        post("/api/drugs") // zamiast "/drugs"
+                        post("/api/drugs")
                                 .contentType(MediaType.APPLICATION_JSON)
                                 .content(json)
                 )
@@ -83,11 +91,12 @@ public class DrugsControllerWebMvcTest {
     @TestConfiguration
     static class NoSecurityConfig {
         @Bean
+        @SuppressWarnings("unused")
         public SecurityFilterChain testSecurityFilterChain(HttpSecurity http) throws Exception {
             return http
                     .securityMatcher("/**") // jeśli chcesz mieć ogólnie
                     .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
-                    .csrf(csrf -> csrf.disable())
+                    .csrf(AbstractHttpConfigurer::disable)
                     .build();
         }
     }

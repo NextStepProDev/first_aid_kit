@@ -24,6 +24,7 @@ spring:
       - expiringDrugs
       - simpleDrugs
       - sortedDrugs
+      - drugsByDescription
     caffeine:
       spec: maximumSize=150,expireAfterWrite=60m
 

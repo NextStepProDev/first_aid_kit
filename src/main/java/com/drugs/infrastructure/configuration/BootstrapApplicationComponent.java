@@ -1,11 +1,10 @@
 package com.drugs.infrastructure.configuration;
 
 import com.drugs.controller.dto.DrugsFormDTO;
+import com.drugs.infrastructure.business.DrugsFormService;
 import com.drugs.infrastructure.database.entity.DrugsEntity;
 import com.drugs.infrastructure.database.repository.DrugsRepository;
-import com.drugs.infrastructure.business.DrugsFormService;
 import com.drugs.infrastructure.util.DateUtils;
-import jakarta.persistence.EntityManager;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationListener;
@@ -18,13 +17,14 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 @Component
 @AllArgsConstructor
+@SuppressWarnings("unused")
 public class BootstrapApplicationComponent implements ApplicationListener<ContextRefreshedEvent> {
 
     private final DrugsRepository drugsRepository;
     private final DrugsFormService drugsFormService;
     private final JdbcTemplate jdbcTemplate;
 
-    // to jest bardzo ciekawy mechanizm. Ta klasa powoduje, że podczas wstawania springa możemy się wpiąć do niego,
+    // To jest bardzo ciekawy mechanizm. Ta klasa powoduje, że podczas wstawania spring możemy się wpiąć do niego,
     // żeby zrobił dla nas kilka rzeczy. W tym przypadku podczas uruchamiania kontekstu będą wykonywane poniższe rzeczy
 
     @Override
@@ -39,17 +39,22 @@ public class BootstrapApplicationComponent implements ApplicationListener<Contex
 
         insertDrug("Altacet", DrugsFormDTO.GEL, 2025, 4, "Lek przeciwbólowy w formie żelu.");
 //        insertDrug("Centrum Junior", DrugsFormDTO.PILLS, 2025, 4, "Witaminy dla dzieci");
-        insertDrug("Helicid 20", DrugsFormDTO.PILLS, 2025, 6, "lek zawierający omeprazol, inhibitor pompy protonowej, który zmniejsza wydzielanie " +
+        insertDrug("Helicid 20", DrugsFormDTO.PILLS, 2025, 6, "lek zawierający omeprazol, " +
+                "inhibitor pompy protonowej, który zmniejsza wydzielanie " +
                 "kwasu solnego w żołądku. Stosowany jest w leczeniu choroby refluksowej przełyku, owrzodzeń " +
                 "żołądka i dwunastnicy, eradykacji Helicobacter pylori");
-        insertDrug("Xylometazolin", DrugsFormDTO.DROPS, 2025, 7, "pełne otwarte opakowanie, do nosa");
+        insertDrug("Xylometazolin", DrugsFormDTO.DROPS, 2025, 7, "pełne otwarte opakowanie, " +
+                "do nosa");
         insertDrug("Procto-Hemolan", DrugsFormDTO.CREAM, 2025, 7, "Krem doodbytniczy");
-        insertDrug("Perskindol", DrugsFormDTO.GEL, 2025, 12, "Chłodząco - rozgrzewający na bóle mięśni");
-        insertDrug("Zinnat", DrugsFormDTO.PILLS, 2026, 1, "stosowany w leczeniu różnorodnych zakażeń bakteryjnych u dorosłych i dzieci. " +
+        insertDrug("Perskindol", DrugsFormDTO.GEL, 2025, 12, "Chłodząco - rozgrzewający na " +
+                "bóle mięśni");
+        insertDrug("Zinnat", DrugsFormDTO.PILLS, 2026, 1, "stosowany w leczeniu " +
+                "różnorodnych zakażeń bakteryjnych u dorosłych i dzieci. " +
                 "Zakażenia górnych dróg oddechowych, takie jak zapalenie gardła, zatok i ucha środkowego. " +
                 "Zakażenia dolnych dróg oddechowych, w tym zapalenie oskrzeli i płuc. Zakażenia układu moczowego.");
         insertDrug("Naproxen 500 Hasco", DrugsFormDTO.PILLS, 2026, 2, "Koncówka");
-        insertDrug("Ospen 1000", DrugsFormDTO.PILLS, 2026, 3, "Antybiotyk zawierający fenoksymetylopenicylinę, zakażenia górnych i dolnych dróg " +
+        insertDrug("Ospen 1000", DrugsFormDTO.PILLS, 2026, 3, "Antybiotyk zawierający " +
+                "fenoksymetylopenicylinę, zakażenia górnych i dolnych dróg " +
                 "oddechowych (np. angina, zapalenie migdałków, zapalenie gardła, zapalenie ucha środkowego, " +
                 "zapalenie zatok);");
         insertDrug("Mugga", DrugsFormDTO.LIQUID, 2026, 4, "Pełny");

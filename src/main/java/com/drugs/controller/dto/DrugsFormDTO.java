@@ -1,5 +1,8 @@
 package com.drugs.controller.dto;
 
+import lombok.Getter;
+
+@Getter
 public enum DrugsFormDTO {
     GEL("Żel"),
     PILLS("Tabletki"),
@@ -18,9 +21,5 @@ public enum DrugsFormDTO {
 
     DrugsFormDTO(String label) {
         this.label = label;
-    }
-
-    public String getLabel() {
-        return label;
     }
 }

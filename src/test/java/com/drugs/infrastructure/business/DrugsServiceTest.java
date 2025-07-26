@@ -127,6 +127,11 @@ class DrugsServiceTest {
         drugsService.deleteDrug(123);
 
         // then
+        ArgumentCaptor<Integer> captor = ArgumentCaptor.forClass(Integer.class);
+        verify(drugsRepository).findById(captor.capture());
+        Integer capturedId = captor.getValue();
+        assertThat(capturedId).isEqualTo(123);
+        assertThat(capturedId).isEqualTo(entity.getDrugsId());
         verify(drugsRepository).delete(entity);
     }
 
@@ -137,6 +142,10 @@ class DrugsServiceTest {
 
         // when / then
         assertThrows(RuntimeException.class, () -> drugsService.deleteDrug(999));
+        ArgumentCaptor<Integer> captor = ArgumentCaptor.forClass(Integer.class);
+        verify(drugsRepository).findById(captor.capture());
+        Integer capturedId = captor.getValue();
+        assertThat(capturedId).isEqualTo(999);
     }
 
     @Test
@@ -236,7 +245,7 @@ class DrugsServiceTest {
         java.util.List<DrugsDTO> result = drugsService.searchByDescription("pain");
 
         assertThat(result).hasSize(1);
-        assertThat(result.get(0).getDrugsName()).isEqualTo("Nurofen");
+        assertThat(result.getFirst().getDrugsName()).isEqualTo("Nurofen");
     }
 
     @Test

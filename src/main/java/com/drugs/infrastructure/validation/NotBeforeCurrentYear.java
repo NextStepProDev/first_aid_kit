@@ -15,9 +15,12 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @Target({FIELD})
 @Retention(RUNTIME)
 public @interface NotBeforeCurrentYear {
+    @SuppressWarnings("unused")
     String message() default "Expiration year must be current year or later";
 
+    @SuppressWarnings("unused")
     Class<?>[] groups() default {};
 
+    @SuppressWarnings("unused")
     Class<? extends Payload>[] payload() default {};
 }

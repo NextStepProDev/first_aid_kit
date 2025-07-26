@@ -6,9 +6,4 @@ public class DrugNotFoundException extends RuntimeException {
     public DrugNotFoundException(String message) {
         super(message);
     }
-
-    // Constructor accepting a message and cause
-    public DrugNotFoundException(String message, Throwable cause) {
-        super(message, cause);
-    }
 }
