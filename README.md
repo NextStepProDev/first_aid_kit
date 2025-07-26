@@ -205,10 +205,8 @@ docker volume ls
 docker volume inspect 00c986...
 ```
 
-License
-
-## License
+### License
 
 This project is licensed under the MIT License – see the [LICENSE](LICENSE) file for details.
----
+
 ❤️ Made with love during my journey to become a Junior Java Developer – Mateusz Nawratek
