@@ -17,27 +17,38 @@ import java.time.OffsetDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 @RestControllerAdvice
 @Slf4j
 public class GlobalExceptionHandler {
 
     /**
-     * Handles validation errors for @Valid annotated request bodies.
-     * Returns a list of validation error details for each field.
-     */
+     * Handles validation errors for DTOs annotated with @Valid.
+     * Returns a detailed error message with field validation errors.
+     * <p>
+     * This method is triggered automatically by Spring when a DTO fails validation.
+     * It collects all field errors and returns them in a structured format.
+     * </p>
+     * <p>
+     * Note: If any DTO field violates annotations like @NotBlank, @Min, @Pattern, or custom validations
+     * (e.g., @ValidDrugsForm), Spring will throw MethodArgumentNotValidException before reaching your controller!
+     * */
+//    Jeśli jakiekolwiek pole DTO łamie adnotacje @NotBlank, @Min, @Pattern, lub niestandardową walidację
+//    (@ValidDrugsForm) to Spring automatycznie rzuca MethodArgumentNotValidException, zanim nawet wejdzie do Twojego
+//    kontrolera!
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @SuppressWarnings("unused")
-    public ResponseEntity<List<FieldValidationError>> handleValidationErrors(MethodArgumentNotValidException ex) {
+    public ResponseEntity<ValidationErrorMessageDTO> handleValidationErrors(MethodArgumentNotValidException ex) {
         List<FieldValidationError> errors = ex.getBindingResult().getFieldErrors().stream()
-                .collect(java.util.stream.Collectors.toMap(
+                .collect(Collectors.toMap(
                         FieldError::getField,
                         err -> new FieldValidationError(
                                 err.getField(),
                                 err.getRejectedValue(),
                                 err.getDefaultMessage()
                         ),
-                        (first, second) -> first // keep only the first error per field
+                        (first, second) -> first
                 ))
                 .values()
                 .stream()
@@ -45,7 +56,13 @@ public class GlobalExceptionHandler {
 
         log.warn("Validation error occurred: {}", errors);
 
-        return ResponseEntity.badRequest().body(errors);
+        ValidationErrorMessageDTO validationError = new ValidationErrorMessageDTO(
+                HttpStatus.BAD_REQUEST.value(),
+                "Validation failed",
+                OffsetDateTime.now().toString(),
+                errors
+        );
+        return ResponseEntity.badRequest().body(validationError);
     }
 
     /**
@@ -70,9 +87,10 @@ public class GlobalExceptionHandler {
      * Returns a 404 NOT FOUND status with an error message.
      */
     @ExceptionHandler(DrugNotFoundException.class)
-    public ResponseEntity<String> handleDrugNotFound(DrugNotFoundException ex) {
+    public ResponseEntity<ErrorMessage> handleDrugNotFound(DrugNotFoundException ex) {
         log.warn("Drug not found: {}", ex.getMessage());
-        return new ResponseEntity<>(ex.getMessage(), HttpStatus.NOT_FOUND);
+//        return new ResponseEntity<>(ex.getMessage(), HttpStatus.NOT_FOUND);
+        return ResponseEntity.status(404).body(new ErrorMessage(404, ex.getMessage()));
     }
 
     /**
@@ -151,8 +169,5 @@ public class GlobalExceptionHandler {
     private String extractFieldName(String path) {
         int lastDot = path.lastIndexOf(".");
         return lastDot != -1 ? path.substring(lastDot + 1) : path;
-    }
-
-    public record FieldValidationError(String field, Object rejectedValue, String message) {
     }
 }
