@@ -1,15 +1,13 @@
 package com.drugs;
 
 import jakarta.annotation.PreDestroy;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-
+@Slf4j
 @SpringBootApplication
 public class Application implements CommandLineRunner {
-    private static final Logger logger = LoggerFactory.getLogger(Application.class);
 
     public static void main(String[] args) {
         SpringApplication.run(Application.class, args);
@@ -17,7 +15,7 @@ public class Application implements CommandLineRunner {
 
     @Override
     public void run(String... args) {
-        logger.info("Application has started successfully.");
+        log.info("Application has started successfully.");
     }
 //	http://localhost:8080/api/drugs
 //	http://localhost:8080/swagger-ui.html
@@ -25,6 +23,6 @@ public class Application implements CommandLineRunner {
     @PreDestroy
     @SuppressWarnings("unused")
     public void onExit() {
-        logger.info("Application is shutting down.");
+        log.info("Application is shutting down.");
     }
 }

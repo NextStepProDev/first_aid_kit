@@ -44,5 +44,4 @@ public class ZajavkaUserDetailService implements UserDetailsService {
                 authorities
         );
     }
-//    $2a$12$VKSNEst66WnLr68DfDBq9OdWysgHcBKWBQrPkheiNuUsO.iRuWJ6e
 }

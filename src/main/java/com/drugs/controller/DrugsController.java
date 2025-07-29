@@ -53,10 +53,10 @@ public class DrugsController {
     @PostMapping
     @Operation(summary = "Add new drug", description = "Adds a new drug to the database")
     @SuppressWarnings("unused")
-    public ResponseEntity<Void> addDrug(@RequestBody @Valid DrugsRequestDTO dto) {
+    public ResponseEntity<DrugsDTO> addDrug(@RequestBody @Valid DrugsRequestDTO dto) {
         logger.info("Adding new drug with name: {}", dto.getName());
-        drugsService.addNewDrug(dto);
-        return ResponseEntity.status(HttpStatus.CREATED).build();
+        DrugsDTO addedDrug = drugsService.addNewDrug(dto);
+        return ResponseEntity.status(HttpStatus.CREATED).body(addedDrug);
     }
 
     @DeleteMapping("/{id}")
@@ -144,6 +144,14 @@ public class DrugsController {
     public Page<DrugsDTO> getPagedDrugs(@ParameterObject Pageable pageable) {
         logger.info("Fetching drugs with pagination");
         return drugsService.getDrugsPaged(pageable);
+    }
+
+    @GetMapping("/by-form")
+    @Operation(summary = "Get drugs by form", description = "Returns a list of drugs matching the given form")
+    @SuppressWarnings("unused")
+    public ResponseEntity<List<DrugsDTO>> getDrugsByForm(@RequestParam String form) {
+        logger.info("Fetching drugs by form: {}", form);
+        return ResponseEntity.ok(drugsService.getDrugsByForm(form));
     }
 
     @GetMapping("/by-description")

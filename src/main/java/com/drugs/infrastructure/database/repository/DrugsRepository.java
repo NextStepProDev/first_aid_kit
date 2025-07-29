@@ -1,6 +1,7 @@
 package com.drugs.infrastructure.database.repository;
 
 import com.drugs.infrastructure.database.entity.DrugsEntity;
+import com.drugs.infrastructure.database.entity.DrugsFormEntity;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -31,4 +32,6 @@ public interface DrugsRepository extends JpaRepository<DrugsEntity, Integer> {
     List<DrugsEntity> findByExpirationDateLessThanEqualAndAlertSentFalse(OffsetDateTime date);
 
     List<DrugsEntity> findByDrugsNameContainingIgnoreCase(String name);
+
+    List<DrugsEntity> findByDrugsForm(DrugsFormEntity formEnum);
 }

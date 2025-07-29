@@ -21,6 +21,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.OffsetDateTime;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -44,7 +45,7 @@ public class DrugsService {
 
     @CacheEvict(value = {"allDrugs", "simpleDrugs", "drugById", "drugsByName", "expiredDrugs", "expiringDrugs",
             "sortedDrugs"}, allEntries = true)
-    public void addNewDrug(DrugsRequestDTO dto) {
+    public DrugsDTO addNewDrug(DrugsRequestDTO dto) {
         logger.info("Attempting to add a new drug: {}", dto.getName());
 
         DrugsFormEntity form = drugsFormService.resolve(DrugsFormDTO.valueOf(dto.getForm()));
@@ -56,8 +57,10 @@ public class DrugsService {
                 .drugsDescription(dto.getDescription())
                 .build();
 
-        drugsRepository.save(entity);
+        DrugsEntity saved = drugsRepository.save(entity);
         logger.info("Successfully added the drug: {}", dto.getName());
+
+        return drugsMapper.mapToDTO(saved);  // <-- konwertujesz na DTO
     }
 
     /**
@@ -325,6 +328,26 @@ public class DrugsService {
                 .alertSentCount(alertsSent)
                 .drugsByForm(stats)
                 .build();
+    }
+
+    /**
+     * Retrieves a list of drugs by their form.
+     *
+     * @param form the form of the drugs to retrieve
+     * @return a list of drug data transfer objects matching the specified form
+     */
+    @Cacheable("drugsByForm")
+    public List<DrugsDTO> getDrugsByForm(String form) {
+        DrugsFormDTO formEnum = Arrays.stream(DrugsFormDTO.values())
+                .filter(e -> e.name().equalsIgnoreCase(form))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Invalid drug form: " + form));
+
+        DrugsFormEntity formEntity = drugsFormService.resolve(formEnum);
+        List<DrugsEntity> entities = drugsRepository.findByDrugsForm(formEntity);
+        return entities.stream()
+                .map(drugsMapper::mapToDTO)
+                .toList();
     }
 
     /**

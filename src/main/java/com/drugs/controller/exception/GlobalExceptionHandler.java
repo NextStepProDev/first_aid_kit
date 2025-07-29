@@ -163,6 +163,18 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Handles IllegalArgumentException when an invalid argument is passed to a method.
+     * Returns a BAD REQUEST response with an error message.
+     */
+    @SuppressWarnings("unused")
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorMessage> handleIllegalArgument(IllegalArgumentException ex) {
+        return ResponseEntity
+                .badRequest()
+                .body(new ErrorMessage(400, ex.getMessage()));
+    }
+
+    /**
      * Extracts the field name from a property path, which may contain nested properties.
      * For example, "user.name" will return "name".
      */

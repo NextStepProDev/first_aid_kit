@@ -25,6 +25,7 @@ spring:
       - simpleDrugs
       - sortedDrugs
       - drugsByDescription
+      - drugsByForm
     caffeine:
       spec: maximumSize=150,expireAfterWrite=60m
 
@@ -55,6 +56,3 @@ spring:
     hiddenmethod:
       filter:
         enabled: true
-
-#  flyway:
-#    baseline-on-migrate: true
