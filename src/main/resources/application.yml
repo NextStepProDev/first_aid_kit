@@ -1,12 +1,15 @@
 server:
   port: 8080
+# Wymusza obsługę nagłówków przekazywanych przez reverse proxy (np. ngrok)
+# Dzięki temu Swagger UI generuje poprawne linki (https zamiast http)
+  forward-headers-strategy: framework
 
 spring:
   mail:
     host: smtp.gmail.com
     port: 587
-    username: djdefkon@gmail.com
-    password: sqhj ecos hwni dckr
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
     properties:
       mail:
         smtp:
@@ -26,13 +29,15 @@ spring:
       - sortedDrugs
       - drugsByDescription
       - drugsByForm
+      - drugStatistics
+
     caffeine:
       spec: maximumSize=150,expireAfterWrite=60m
 
   datasource:
     url: jdbc:postgresql://localhost:5432/first_aid_kit
-    username: postgres
-    password: postgres
+    username: ${POSTGRES_USER}
+    password: ${POSTGRES_PASSWORD}
     driver-class-name: org.postgresql.Driver
     type: com.zaxxer.hikari.HikariDataSource
     hikari:
@@ -56,3 +61,4 @@ spring:
     hiddenmethod:
       filter:
         enabled: true
+

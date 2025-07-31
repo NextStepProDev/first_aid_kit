@@ -2,6 +2,7 @@ package com.drugs.infrastructure.business;
 
 import com.drugs.controller.dto.*;
 import com.drugs.controller.exception.DrugNotFoundException;
+import com.drugs.controller.exception.EmailSendingException;
 import com.drugs.controller.exception.InvalidSortFieldException;
 import com.drugs.infrastructure.database.entity.DrugsEntity;
 import com.drugs.infrastructure.database.entity.DrugsFormEntity;
@@ -64,6 +65,28 @@ public class DrugsService {
     }
 
     /**
+     * Retrieves a drug by its ID.
+     *
+     * @param id the ID of the drug to retrieve
+     * @return the drug data transfer object
+     * @throws DrugNotFoundException if the drug with the given ID does not exist
+     */
+    @Cacheable(value = "drugById", key = "#id")
+    public DrugsDTO getDrugById(Integer id) {
+        logger.info("Fetching drug with ID: {}", id);
+        DrugsEntity entity;
+        try {
+            entity = drugsRepository.findById(id)
+                    .orElseThrow(() -> new DrugNotFoundException("Drug not found with ID: " + id));
+        } catch (ResponseStatusException e) {
+            logger.error("Drug not found with ID: {}", id);
+            throw e;
+        }
+        logger.info("Found drug with ID: {}", id);
+        return drugsMapper.mapToDTO(entity);
+    }
+
+    /**
      * Deletes a drug by its ID and clears relevant caches.
      *
      * @param id the ID of the drug to delete
@@ -89,10 +112,15 @@ public class DrugsService {
             "sortedDrugs"}, allEntries = true)
     public DrugsDTO updateDrug(Integer id, DrugsRequestDTO dto) {
         logger.info("Attempting to update drug with ID: {}", id);
+        DrugsEntity entity;
+        try {
+            entity = drugsRepository.findById(id)
+                    .orElseThrow(() -> new DrugNotFoundException("Drug not found with ID: " + id));
 
-        DrugsEntity entity = drugsRepository.findById(id)
-                .orElseThrow(() -> new DrugNotFoundException("Drug not found with ID: " + id));
-
+        } catch (ResponseStatusException e) {
+            logger.error("Drug not found with ID: {}", id);
+            throw e;
+        }
         entity.setDrugsName(dto.getName());
         entity.setDrugsForm(drugsFormService.resolve(DrugsFormDTO.valueOf(dto.getForm())));
         entity.setExpirationDate(DateUtils.buildExpirationDate(dto.getExpirationYear(), dto.getExpirationMonth()));
@@ -173,28 +201,6 @@ public class DrugsService {
                 .toList();
         logger.info("Found {} drugs total.", drugs.size());
         return drugs;
-    }
-
-    /**
-     * Retrieves a drug by its ID.
-     *
-     * @param id the ID of the drug to retrieve
-     * @return the drug data transfer object
-     * @throws DrugNotFoundException if the drug with the given ID does not exist
-     */
-    @Cacheable(value = "drugById", key = "#id")
-    public DrugsDTO getDrugById(Integer id) {
-        logger.info("Fetching drug with ID: {}", id);
-        DrugsEntity entity;
-        try {
-            entity = drugsRepository.findById(id)
-                    .orElseThrow(() -> new DrugNotFoundException("Drug not found with ID: " + id));
-        } catch (ResponseStatusException e) {
-            logger.error("Drug not found with ID: {}", id);
-            throw e;
-        }
-        logger.info("Found drug with ID: {}", id);
-        return drugsMapper.mapToDTO(entity);
     }
 
     /**
@@ -281,6 +287,7 @@ public class DrugsService {
                     logger.info("Alert sent and drug marked as notified: {}", drug.getDrugsName());
                 } catch (Exception e) {
                     logger.error("Failed to send alert for drug: {}", drug.getDrugsName(), e);
+                    throw new EmailSendingException("Could not send email alert for drug: " + drug.getDrugsName(), e);
                 }
             } else {
                 logger.info("Drug already notified: {}", drug.getDrugsName());

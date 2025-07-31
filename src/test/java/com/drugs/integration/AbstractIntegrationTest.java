@@ -9,20 +9,18 @@ import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.DynamicPropertyRegistry;
-import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 @Testcontainers
-@SpringBootTest(properties = "spring.flyway.clean-disabled=false")
+@SpringBootTest
 @ActiveProfiles("test")
 @Import(NoSecurityConfig.class)
 public abstract class AbstractIntegrationTest {
 
     @Container
-    @SuppressWarnings("resource")
+    @SuppressWarnings({"unused", "resource"})
     static PostgreSQLContainer<?> postgresContainer = new PostgreSQLContainer<>("postgres:17.4")
             .withDatabaseName("testdb")
             .withUsername("test")
@@ -31,14 +29,6 @@ public abstract class AbstractIntegrationTest {
     protected DrugsRepository drugsRepository;
     @Autowired
     protected CacheManager cacheManager;
-
-    @DynamicPropertySource
-    @SuppressWarnings("unused")
-    static void configureProperties(DynamicPropertyRegistry registry) {
-        registry.add("spring.datasource.url", postgresContainer::getJdbcUrl);
-        registry.add("spring.datasource.username", postgresContainer::getUsername);
-        registry.add("spring.datasource.password", postgresContainer::getPassword);
-    }
 
     @BeforeEach
     void resetData() {

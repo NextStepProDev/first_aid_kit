@@ -1,5 +1,6 @@
 package com.drugs.controller;
 
+import com.drugs.config.NoSecurityConfig;
 import com.drugs.infrastructure.business.DrugsFormService;
 import com.drugs.infrastructure.business.DrugsService;
 import com.drugs.infrastructure.database.mapper.DrugsMapper;
@@ -12,13 +13,8 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
-import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
-import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -29,7 +25,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(DrugsController.class)
-@Import(DrugsControllerValidationSliceTest.NoSecurityConfig.class) // to jest konieczne, ponieważ security blokuje test
+@Import(NoSecurityConfig.class) // to jest konieczne, ponieważ security blokuje test
 public class DrugsControllerValidationSliceTest {
 
     @Autowired
@@ -59,24 +55,6 @@ public class DrugsControllerValidationSliceTest {
     @MockitoBean
     @SuppressWarnings("unused")
     private PdfExportService pdfExportService;
-
-    private String buildJson(String name, String form, Integer year, Integer month, String description) {
-        return """
-        {
-          "name": %s,
-          "form": %s,
-          "expirationYear": %s,
-          "expirationMonth": %s,
-          "description": %s
-        }
-        """.formatted(
-                name == null ? "null" : "\"" + name + "\"",
-                form == null ? "null" : "\"" + form + "\"",
-                year == null ? "null" : year,
-                month == null ? "null" : month,
-                description == null ? "null" : "\"" + description + "\""
-        );
-    }
 
     static Stream<Arguments> invalidMonthProvider() {
         return Stream.of(
@@ -123,6 +101,32 @@ public class DrugsControllerValidationSliceTest {
         );
     }
 
+    static Stream<Arguments> formBlankOrNullProvider() {
+        return Stream.of(
+                Arguments.of(false, null),
+                Arguments.of(false, ""),
+                Arguments.of(false, " ")
+        );
+    }
+
+    private String buildJson(String name, String form, Integer year, Integer month, String description) {
+        return """
+                {
+                  "name": %s,
+                  "form": %s,
+                  "expirationYear": %s,
+                  "expirationMonth": %s,
+                  "description": %s
+                }
+                """.formatted(
+                name == null ? "null" : "\"" + name + "\"",
+                form == null ? "null" : "\"" + form + "\"",
+                year == null ? "null" : year,
+                month == null ? "null" : month,
+                description == null ? "null" : "\"" + description + "\""
+        );
+    }
+
     @ParameterizedTest
     @MethodSource("invalidMonthProvider")
     @DisplayName("Should return 201 for valid month and 400 for invalid month")
@@ -166,7 +170,8 @@ public class DrugsControllerValidationSliceTest {
     @ParameterizedTest
     @MethodSource("formProvider")
     @DisplayName("Should return 201 for valid form and 400 for invalid form")
-        // slice test, czyli testujemy tylko kontroler
+    // slice test, czyli testujemy tylko kontroler
+    @SuppressWarnings("unused")
     void shouldReturnBadRequestForInvalidForm(boolean isValid, String form) throws Exception {
         String json = buildJson("Ibuprofen", form, 2025, 12, "lek przeciwbólowy");
         mockMvc.perform(
@@ -180,6 +185,7 @@ public class DrugsControllerValidationSliceTest {
     @ParameterizedTest
     @MethodSource("invalidDescriptionProvider")
     @DisplayName("Should return 201 for valid description and 400 for invalid description")
+    @SuppressWarnings("unused")
     void shouldReturnBadRequestForInvalidDescription(Boolean isValid, String description) throws Exception {
         String json = buildJson("Ibuprofen", "PILLS", 2025, 12, description);
         mockMvc.perform(
@@ -190,16 +196,17 @@ public class DrugsControllerValidationSliceTest {
                 .andExpect(isValid ? status().isCreated() : status().isBadRequest());
     }
 
-    @TestConfiguration
-    static class NoSecurityConfig {
-        @Bean
-        @SuppressWarnings("unused")
-        public SecurityFilterChain testSecurityFilterChain(HttpSecurity http) throws Exception {
-            return http
-                    .securityMatcher("/**") // jeśli chcesz mieć ogólnie
-                    .authorizeHttpRequests(auth -> auth.anyRequest().permitAll())
-                    .csrf(AbstractHttpConfigurer::disable)
-                    .build();
-        }
+    @ParameterizedTest
+    @MethodSource("formBlankOrNullProvider")
+    @DisplayName("Should return 400 for null or blank form values")
+    @SuppressWarnings("unused")
+    void shouldReturnBadRequestForBlankOrNullForm(boolean isValid, String form) throws Exception {
+        String json = buildJson("Ibuprofen", form, 2025, 12, "Painkiller for fever");
+        mockMvc.perform(
+                        post("/api/drugs")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(json)
+                )
+                .andExpect(isValid ? status().isCreated() : status().isBadRequest());
     }
 }

@@ -10,4 +10,9 @@ INSERT INTO drugs_form (name) VALUES
   ('OINTMENT'),
   ('LIQUID'),
   ('POWDER'),
+  ('INJECTION'),
+  ('BANDAGE'),
+  ('INHALER'),
+  ('PATCH'),
+  ('SOLUTION'),
   ('OTHER');

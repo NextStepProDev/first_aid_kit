@@ -5,7 +5,6 @@ import com.drugs.infrastructure.business.DrugsFormService;
 import com.drugs.infrastructure.database.entity.DrugsEntity;
 import com.drugs.infrastructure.database.repository.DrugsRepository;
 import com.drugs.infrastructure.util.DateUtils;
-import jakarta.annotation.PostConstruct;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationListener;
@@ -100,10 +99,5 @@ public class BootstrapApplicationComponent implements ApplicationListener<Contex
         String resetQuery = "ALTER SEQUENCE drugs_drugs_id_seq RESTART WITH 1;";
         jdbcTemplate.execute(resetQuery);
         log.info("Sequence for drugs_drugs_id_seq reset to 1.");
-    }
-
-    @PostConstruct
-    public void resetDrugIdSequence() {
-        jdbcTemplate.execute("ALTER SEQUENCE drugs_drugs_id_seq RESTART WITH 1");
     }
 }

@@ -5,8 +5,11 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.cache.annotation.EnableCaching;
+
 @Slf4j
 @SpringBootApplication
+@EnableCaching
 public class Application implements CommandLineRunner {
 
     public static void main(String[] args) {
@@ -17,8 +20,6 @@ public class Application implements CommandLineRunner {
     public void run(String... args) {
         log.info("Application has started successfully.");
     }
-//	http://localhost:8080/api/drugs
-//	http://localhost:8080/swagger-ui.html
 
     @PreDestroy
     @SuppressWarnings("unused")

@@ -175,6 +175,18 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Handles EmailSendingException when there is an error sending an email.
+     * Returns a 500 INTERNAL SERVER ERROR with a generic error message.
+     */
+    @ExceptionHandler(EmailSendingException.class)
+    @SuppressWarnings("unused")
+    public ResponseEntity<ErrorMessage> handleEmailSendingException(EmailSendingException ex) {
+        log.error("Email sending failed: {}", ex.getMessage(), ex);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ErrorMessage(500, "Failed to send expiry alert email. Please try again later."));
+    }
+
+    /**
      * Extracts the field name from a property path, which may contain nested properties.
      * For example, "user.name" will return "name".
      */
@@ -182,4 +194,5 @@ public class GlobalExceptionHandler {
         int lastDot = path.lastIndexOf(".");
         return lastDot != -1 ? path.substring(lastDot + 1) : path;
     }
+
 }

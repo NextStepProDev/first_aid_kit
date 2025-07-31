@@ -2,6 +2,7 @@ plugins {
     id 'java'
     id 'org.springframework.boot' version "${springBootVersion}"
     id 'io.spring.dependency-management' version "${springBootDependencyManagementVersion}"
+    id 'jacoco'
 }
 
 group = 'pl.zajavka'
@@ -56,6 +57,7 @@ dependencies {
     // 2 poniższe zależności są do użycia Dockera
     testImplementation 'org.testcontainers:junit-jupiter'
     testImplementation 'org.testcontainers:postgresql'
+
 }
 
 // to co poniżej to jest potrzebne do użycia Docker podczas testów
@@ -73,6 +75,7 @@ tasks.named('test') {
 test {
     useJUnitPlatform()
     jvmArgs "-javaagent:${classpath.find { it.name.contains('byte-buddy-agent') }}"
+    systemProperty "spring.profiles.active", "test"
     testLogging {
         events "passed", "skipped", "failed"
     }
@@ -80,8 +83,6 @@ test {
 
 compileJava.options.encoding = 'UTF-8'
 
-
-apply plugin: 'jacoco'
 
 jacoco {
     toolVersion = "0.8.11"
@@ -95,4 +96,3 @@ jacocoTestReport {
         html.outputLocation = layout.buildDirectory.dir('reports/jacoco/test/html')
     }
 }
-

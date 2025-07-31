@@ -6,6 +6,8 @@ import com.drugs.infrastructure.pdf.PdfExportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,14 +75,9 @@ public class DrugsController {
     @SuppressWarnings("unused")
     public ResponseEntity<Void> updateDrug(@PathVariable Integer id, @Valid @RequestBody DrugsRequestDTO dto) {
         logger.info("Updating drug with ID: {}", id);
-        try {
-            drugsService.updateDrug(id, dto);
-            logger.info("Drug with ID: {} updated successfully", id);
-            return ResponseEntity.noContent().build();
-        } catch (Exception e) {
-            logger.error("Error updating drug with ID: {}", id, e);
-            return ResponseEntity.status(500).build();
-        }
+        drugsService.updateDrug(id, dto);
+        logger.info("Drug with ID: {} updated successfully", id);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/forms")
@@ -114,8 +111,8 @@ public class DrugsController {
             "specified year and month")
     @SuppressWarnings("unused")
     public ResponseEntity<List<DrugsDTO>> getDrugsExpiringUntil(
-            @RequestParam int year,
-            @RequestParam int month
+            @RequestParam @Min(1900) @Max(2100) int year,
+            @RequestParam @Min(1) @Max(12) int month
     ) {
         logger.info("Fetching drugs expiring until {}-{}", year, month);
         return ResponseEntity.ok(drugsService.getDrugsExpiringSoon(year, month));

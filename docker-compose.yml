@@ -3,7 +3,7 @@ version: '3.8'
 services:
   postgres:
     image: postgres:17.4
-    container_name: postgres-drugs
+    container_name: first_aid_kit_postgres
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
@@ -26,7 +26,23 @@ services:
     depends_on:
       - postgres
 
+  app:
+    build: .
+    container_name: first_aid_kit_spring-app
+    depends_on:
+      - postgres
+    ports:
+      - "8081:8081"  # bo pgAdmin zajmuje 8080
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_PASSWORD: ${MAIL_PASSWORD}
+    networks:
+      - default
+
 volumes:
   postgres_data:
-#    name: postgres_drugs_data
-    name: 00c986efb2500a05bc21d82f814224f8c063dbd0b80045157352ec1501ddd314
+    name: first_aid_kit_postgres_data

@@ -22,6 +22,9 @@ public class DrugsRequestDTO {
     @NotNull(message = "Drug name must not be null")
     private String name;
 
+    @NotBlank(message = "Form must not be blank")
+    @NotNull(message = "Form must not be null")
+    @Size(max = 36, message = "Form must be at most 50 characters")
     @ValueOfEnum(enumClass = DrugsFormDTO.class, message = "Invalid form. Accepted values: {enumValues}")
     @Schema(description = "Form of the drug", example = "PILLS")
     private String form;

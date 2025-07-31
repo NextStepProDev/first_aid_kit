@@ -1,0 +1,18 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://postgres:5432/first_aid_kit
+
+server:
+  port: 8081
+
+# Konfiguracja Swaggera dla poprawnego działania interfejsu Swagger UI w środowisku zewnętrznym (np. przez ngrok)
+# Ustawienia umożliwiają załadowanie dokumentacji i działanie przycisku "Try it out"
+springdoc:
+  swagger-ui:
+    use-root-path: true
+    config-url: /v3/api-docs/swagger-config
+    urls:
+      - name: First Aid Kit API
+        url: /v3/api-docs
+    tryItOutEnabled: true
+    validator-url: none

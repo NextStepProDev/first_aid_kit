@@ -95,11 +95,10 @@ public class DrugIntegrationTest extends AbstractIntegrationTest {
                         .content(requestJson))
                 .andExpect(status().isBadRequest());
 
-        // 2. Verify that drug is not present in the list
+        // 2. Verify that no drugs are present
         mockMvc.perform(get("/api/drugs"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[*].drugsName").value(Matchers.not(Matchers.hasItem("Paracetamol"))));
-
+                .andExpect(jsonPath("$.length()").value(0));
     }
 
     @Test

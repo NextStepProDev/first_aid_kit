@@ -6,8 +6,6 @@ import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayInputStream;
@@ -18,8 +16,6 @@ import java.util.List;
 @RequiredArgsConstructor
 @Slf4j
 public class PdfExportService {
-
-    private static final Logger logger = LoggerFactory.getLogger(PdfExportService.class);
 
     private static PdfPTable getPdfPTable(List<DrugsDTO> drugs) {
         PdfPTable table = new PdfPTable(4);
@@ -46,7 +42,7 @@ public class PdfExportService {
      */
     public ByteArrayInputStream generatePdf(List<DrugsDTO> drugs) {
 
-        logger.info("Starting PDF generation for drug list");
+        log.info("Starting PDF generation for drug list");
 
         Document document = new Document();
         ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -65,10 +61,10 @@ public class PdfExportService {
 
             document.add(table);
             document.close();
-            logger.info("PDF generation completed successfully");
+            log.info("PDF generation completed successfully");
 
         } catch (Exception e) {
-            logger.error("Failed to generate PDF", e);
+            log.error("Failed to generate PDF", e);
             throw new RuntimeException("Failed to generate PDF", e);
         }
 

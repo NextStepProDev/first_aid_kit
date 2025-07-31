@@ -15,6 +15,11 @@ public enum DrugsFormDTO {
     OINTMENT("Maść"),
     LIQUID("Płyn"),
     POWDER("Proszek"),
+    INJECTION("Zastrzyk"),
+    BANDAGE("Bandaż"),
+    INHALER("Inhalator"),
+    PATCH("Plaster"),
+    SOLUTION("Roztwór"),
     OTHER("Inne");
 
     private final String label;
