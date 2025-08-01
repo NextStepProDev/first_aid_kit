@@ -15,7 +15,9 @@
 
 # First Aid Kit Application
 
-This is a Java-based application designed to manage a database of drugs and export the current drug list to PDF. The application includes functionality for managing drug records, including creating, updating, deleting, and querying drugs. It also supports email alerts for drugs that are nearing their expiration dates.
+A lightweight Java-based application for managing a database of drugs. It supports creating, updating, deleting, and 
+querying drug records, along with automated email alerts for medications nearing expiration. An optional PDF export 
+feature is also available for listing current drugs.
 
 ## Key Features
 

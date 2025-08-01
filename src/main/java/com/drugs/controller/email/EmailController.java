@@ -1,6 +1,7 @@
-package com.drugs.infrastructure.mail;
+package com.drugs.controller.email;
 
-import com.drugs.infrastructure.business.DrugsService;
+import com.drugs.infrastructure.email.EmailService;
+import com.drugs.service.DrugsService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.GetMapping;

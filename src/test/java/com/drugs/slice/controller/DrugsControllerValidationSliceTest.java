@@ -1,12 +1,13 @@
-package com.drugs.controller;
+package com.drugs.slice.controller;
 
 import com.drugs.config.NoSecurityConfig;
-import com.drugs.infrastructure.business.DrugsFormService;
-import com.drugs.infrastructure.business.DrugsService;
+import com.drugs.controller.DrugsController;
 import com.drugs.infrastructure.database.mapper.DrugsMapper;
 import com.drugs.infrastructure.database.repository.DrugsRepository;
-import com.drugs.infrastructure.mail.EmailService;
+import com.drugs.infrastructure.email.EmailService;
 import com.drugs.infrastructure.pdf.PdfExportService;
+import com.drugs.service.DrugsFormService;
+import com.drugs.service.DrugsService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;

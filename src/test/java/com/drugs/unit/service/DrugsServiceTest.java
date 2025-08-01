@@ -1,4 +1,4 @@
-package com.drugs.infrastructure.business;
+package com.drugs.unit.service;
 
 import com.drugs.controller.dto.DrugStatisticsDTO;
 import com.drugs.controller.dto.DrugsDTO;
@@ -8,8 +8,11 @@ import com.drugs.infrastructure.database.entity.DrugsEntity;
 import com.drugs.infrastructure.database.entity.DrugsFormEntity;
 import com.drugs.infrastructure.database.mapper.DrugsMapper;
 import com.drugs.infrastructure.database.repository.DrugsRepository;
-import com.drugs.infrastructure.mail.EmailService;
+import com.drugs.infrastructure.email.EmailService;
 import com.drugs.infrastructure.util.DateUtils;
+import com.drugs.service.DrugsFormService;
+import com.drugs.service.DrugsService;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -44,6 +47,7 @@ class DrugsServiceTest {
     private DrugsService drugsService;
 
     @Test
+    @DisplayName("Should throw exception when drug is not found")
     void getDrugById_shouldThrowWhenNotFound() {
         // given
         Integer drugId = 999;
@@ -63,6 +67,7 @@ class DrugsServiceTest {
     }
 
     @Test
+    @DisplayName("Should return DrugDTO when drug is found")
     void getDrugById_shouldReturnDrugDTO_whenFound() {
         // given
         Integer drugId = 1;
@@ -92,6 +97,7 @@ class DrugsServiceTest {
     }
 
     @Test
+    @DisplayName("Should save a new drug")
     void addNewDrug_shouldSaveDrug() {
         // given
         DrugsFormDTO gel = DrugsFormDTO.GEL;
@@ -117,6 +123,7 @@ class DrugsServiceTest {
     }
 
     @Test
+    @DisplayName("Should delete existing drug")
     void deleteDrug_shouldDeleteExistingDrug() {
         // given
         DrugsEntity entity = new DrugsEntity();
@@ -136,6 +143,7 @@ class DrugsServiceTest {
     }
 
     @Test
+    @DisplayName("Should throw exception when deleting a non-existing drug")
     void deleteDrug_shouldThrowWhenNotFound() {
         // given
         when(drugsRepository.findById(999)).thenReturn(Optional.empty());
@@ -149,6 +157,7 @@ class DrugsServiceTest {
     }
 
     @Test
+    @DisplayName("Should update and return DrugDTO")
     void updateDrug_shouldUpdateAndReturnDTO() {
         // given
         Integer id = 100;
@@ -193,6 +202,7 @@ class DrugsServiceTest {
 
 
     @Test
+    @DisplayName("Should generate correct drug statistics")
     void shouldGenerateCorrectStatistics() {
         when(drugsRepository.count()).thenReturn(10L);
         when(drugsRepository.countByExpirationDateBefore(any())).thenReturn(4L);
@@ -215,6 +225,7 @@ class DrugsServiceTest {
     }
 
     @Test
+    @DisplayName("Should return sorted list of drugs")
     void getDrugsSorted_shouldReturnSortedList() {
         DrugsEntity drug1 = new DrugsEntity();
         drug1.setDrugsName("Aspirin");
@@ -234,6 +245,7 @@ class DrugsServiceTest {
     }
 
     @Test
+    @DisplayName("Should return drugs matching description")
     void getDrugsByDescription_shouldReturnMatchingDrugs() {
         DrugsEntity entity = new DrugsEntity();
         entity.setDrugsName("Nurofen");
@@ -249,6 +261,7 @@ class DrugsServiceTest {
     }
 
     @Test
+    @DisplayName("Should send email alerts and mark drug as notified")
     void sendMailAlert_shouldSendEmailAndMarkAlertSent() {
         // given: przygotowanie leku z datą ważności i bez wysłanego alertu
         DrugsEntity drug = new DrugsEntity();

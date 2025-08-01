@@ -1,5 +1,8 @@
 package com.drugs.infrastructure.security;
 
+import com.drugs.infrastructure.database.entity.RoleEntity;
+import com.drugs.infrastructure.database.entity.UserEntity;
+import com.drugs.infrastructure.database.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -13,7 +16,7 @@ import java.util.Set;
 @Service
 @RequiredArgsConstructor
 @SuppressWarnings("unused")
-public class ZajavkaUserDetailService implements UserDetailsService {
+public class CustomUserDetailService implements UserDetailsService {
 
     private final UserRepository userRepository;
 

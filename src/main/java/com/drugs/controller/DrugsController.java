@@ -1,16 +1,15 @@
 package com.drugs.controller;
 
 import com.drugs.controller.dto.*;
-import com.drugs.infrastructure.business.DrugsService;
 import com.drugs.infrastructure.pdf.PdfExportService;
+import com.drugs.service.DrugsService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springdoc.core.annotations.ParameterObject;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -26,13 +25,13 @@ import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Tag(name = "Drugs API")
 @RestController
 @RequestMapping("/api/drugs")
 @RequiredArgsConstructor
 public class DrugsController {
 
-    private static final Logger logger = LoggerFactory.getLogger(DrugsController.class);
     private final DrugsService drugsService;
     private final PdfExportService pdfExportService;
 
@@ -40,7 +39,7 @@ public class DrugsController {
     @Operation(summary = "Get all drugs", description = "Returns a list of all drugs in the database")
     @SuppressWarnings("unused")
     public List<DrugsDTO> getAllDrugs() {
-        logger.info("Fetching all drugs from database");
+        log.info("Fetching all drugs from database");
         return drugsService.getAllDrugs();
     }
 
@@ -48,7 +47,7 @@ public class DrugsController {
     @Operation(summary = "Get drug by ID", description = "Returns a drug by its ID or 404 if not found")
     @SuppressWarnings("unused")
     public DrugsDTO getDrugById(@PathVariable Integer id) {
-        logger.info("Fetching drug with ID: {}", id);
+        log.info("Fetching drug with ID: {}", id);
         return drugsService.getDrugById(id);
     }
 
@@ -56,7 +55,7 @@ public class DrugsController {
     @Operation(summary = "Add new drug", description = "Adds a new drug to the database")
     @SuppressWarnings("unused")
     public ResponseEntity<DrugsDTO> addDrug(@RequestBody @Valid DrugsRequestDTO dto) {
-        logger.info("Adding new drug with name: {}", dto.getName());
+        log.info("Adding new drug with name: {}", dto.getName());
         DrugsDTO addedDrug = drugsService.addNewDrug(dto);
         return ResponseEntity.status(HttpStatus.CREATED).body(addedDrug);
     }
@@ -65,7 +64,7 @@ public class DrugsController {
     @Operation(summary = "Delete drug by ID", description = "Deletes a drug from the database by its ID")
     @SuppressWarnings("unused")
     public ResponseEntity<Void> deleteDrug(@PathVariable Integer id) {
-        logger.info("Deleting drug with ID: {}", id);
+        log.info("Deleting drug with ID: {}", id);
         drugsService.deleteDrug(id);
         return ResponseEntity.noContent().build(); // 204 No Content
     }
@@ -74,9 +73,9 @@ public class DrugsController {
     @Operation(summary = "Update drug by ID", description = "Updates an existing drug using the given ID and data")
     @SuppressWarnings("unused")
     public ResponseEntity<Void> updateDrug(@PathVariable Integer id, @Valid @RequestBody DrugsRequestDTO dto) {
-        logger.info("Updating drug with ID: {}", id);
+        log.info("Updating drug with ID: {}", id);
         drugsService.updateDrug(id, dto);
-        logger.info("Drug with ID: {} updated successfully", id);
+        log.info("Drug with ID: {} updated successfully", id);
         return ResponseEntity.noContent().build();
     }
 
@@ -84,7 +83,7 @@ public class DrugsController {
     @Operation(summary = "Get drug forms", description = "Returns a list of all available drug forms (enum values)")
     @SuppressWarnings("unused")
     public List<String> getAvailableDrugForms() {
-        logger.info("Fetching available drug forms");
+        log.info("Fetching available drug forms");
         return Arrays.stream(DrugsFormDTO.values()).map(Enum::name).toList();
     }
 
@@ -93,7 +92,7 @@ public class DrugsController {
             "labels")
     @SuppressWarnings("unused")
     public Map<String, String> getDrugsFormsDictionary() {
-        logger.info("Fetching drug form labels");
+        log.info("Fetching drug form labels");
         return Arrays.stream(DrugsFormDTO.values()).collect(Collectors.toMap(Enum::name, DrugsFormDTO::getLabel));
     }
 
@@ -102,7 +101,7 @@ public class DrugsController {
             "value (case-insensitive)")
     @SuppressWarnings("unused")
     public ResponseEntity<List<DrugsDTO>> getDrugsByName(@RequestParam String name) {
-        logger.info("Fetching drugs by name: {}", name);
+        log.info("Fetching drugs by name: {}", name);
         return ResponseEntity.ok(drugsService.getDrugsByName(name));
     }
 
@@ -114,7 +113,7 @@ public class DrugsController {
             @RequestParam @Min(1900) @Max(2100) int year,
             @RequestParam @Min(1) @Max(12) int month
     ) {
-        logger.info("Fetching drugs expiring until {}-{}", year, month);
+        log.info("Fetching drugs expiring until {}-{}", year, month);
         return ResponseEntity.ok(drugsService.getDrugsExpiringSoon(year, month));
     }
 
@@ -122,7 +121,7 @@ public class DrugsController {
     @Operation(summary = "Get expired drugs", description = "Returns a list of drugs that have already expired")
     @SuppressWarnings("unused")
     public ResponseEntity<List<DrugsDTO>> getExpiredDrugs() {
-        logger.info("Fetching expired drugs");
+        log.info("Fetching expired drugs");
         return ResponseEntity.ok(drugsService.getExpiredDrugs());
     }
 
@@ -131,7 +130,7 @@ public class DrugsController {
             "only " + "ID, name, form, and expiration")
     @SuppressWarnings("unused")
     public List<DrugSimpleDTO> getAllDrugsSimple() {
-        logger.info("Fetching simplified list of drugs");
+        log.info("Fetching simplified list of drugs");
         return drugsService.getAllDrugsSimple();
     }
 
@@ -139,7 +138,7 @@ public class DrugsController {
     @Operation(summary = "Get drugs from pages", description = "Returns a list of drugs in the pages")
     @SuppressWarnings("unused")
     public Page<DrugsDTO> getPagedDrugs(@ParameterObject Pageable pageable) {
-        logger.info("Fetching drugs with pagination");
+        log.info("Fetching drugs with pagination");
         return drugsService.getDrugsPaged(pageable);
     }
 
@@ -147,7 +146,7 @@ public class DrugsController {
     @Operation(summary = "Get drugs by form", description = "Returns a list of drugs matching the given form")
     @SuppressWarnings("unused")
     public ResponseEntity<List<DrugsDTO>> getDrugsByForm(@RequestParam String form) {
-        logger.info("Fetching drugs by form: {}", form);
+        log.info("Fetching drugs by form: {}", form);
         return ResponseEntity.ok(drugsService.getDrugsByForm(form));
     }
 
@@ -156,7 +155,7 @@ public class DrugsController {
             " (case-insensitive)")
     @SuppressWarnings("unused")
     public ResponseEntity<List<DrugsDTO>> searchByDescription(@RequestParam String description) {
-        logger.info("Searching drugs by description: {}", description);
+        log.info("Searching drugs by description: {}", description);
         return ResponseEntity.ok(drugsService.searchByDescription(description));
     }
 
@@ -164,7 +163,7 @@ public class DrugsController {
     @Operation(summary = "Export drugs list to PDF")
     @SuppressWarnings("unused")
     public ResponseEntity<byte[]> exportDrugsToPdf() {
-        logger.info("Exporting drugs list to PDF");
+        log.info("Exporting drugs list to PDF");
         List<DrugsDTO> drugs = drugsService.getAllDrugs();
         ByteArrayInputStream pdf = pdfExportService.generatePdf(drugs);
 
@@ -183,7 +182,7 @@ public class DrugsController {
             "active drugs, alerts sent, and a breakdown by form")
     @SuppressWarnings("unused")
     public DrugStatisticsDTO getDrugStatistics() {
-        logger.info("Fetching drug statistics");
+        log.info("Fetching drug statistics");
         return drugsService.getDrugStatistics();
     }
 
@@ -195,7 +194,7 @@ public class DrugsController {
     )
     @SuppressWarnings("unused")
     public List<DrugsDTO> getAllSorted(@RequestParam(defaultValue = "drugsName") String sortBy) {
-        logger.info("Fetching drugs sorted by: {}", sortBy);
+        log.info("Fetching drugs sorted by: {}", sortBy);
         return drugsService.getAllSorted(sortBy);
     }
 }

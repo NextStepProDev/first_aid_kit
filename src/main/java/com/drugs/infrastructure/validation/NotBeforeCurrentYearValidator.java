@@ -9,7 +9,7 @@ public class NotBeforeCurrentYearValidator implements ConstraintValidator<NotBef
 
     @Override
     public boolean isValid(Integer value, ConstraintValidatorContext context) {
-        if (value == null) return true; // pozwól innym adnotacjom złapać null
+        if (value == null) return true;
         int currentYear = Year.now().getValue();
         return value >= currentYear;
     }

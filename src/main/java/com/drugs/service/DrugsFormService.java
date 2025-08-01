@@ -1,4 +1,4 @@
-package com.drugs.infrastructure.business;
+package com.drugs.service;
 
 import com.drugs.controller.dto.DrugsFormDTO;
 import com.drugs.infrastructure.database.entity.DrugsFormEntity;

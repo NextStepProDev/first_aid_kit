@@ -1,5 +1,8 @@
-package com.drugs.controller.exception;
+package com.drugs.exception;
 
+import com.drugs.controller.exception.DrugNotFoundException;
+import com.drugs.controller.exception.ErrorMessage;
+import com.drugs.controller.exception.GlobalExceptionHandler;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

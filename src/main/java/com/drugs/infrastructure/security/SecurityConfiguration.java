@@ -1,5 +1,7 @@
 package com.drugs.infrastructure.security;
 
+import com.drugs.infrastructure.database.entity.UserEntity;
+import com.drugs.infrastructure.database.repository.UserRepository;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

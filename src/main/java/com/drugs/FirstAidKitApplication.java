@@ -10,20 +10,20 @@ import org.springframework.cache.annotation.EnableCaching;
 @Slf4j
 @SpringBootApplication
 @EnableCaching
-public class Application implements CommandLineRunner {
+public class FirstAidKitApplication implements CommandLineRunner {
 
     public static void main(String[] args) {
-        SpringApplication.run(Application.class, args);
+        SpringApplication.run(FirstAidKitApplication.class, args);
     }
 
     @Override
     public void run(String... args) {
-        log.info("Application has started successfully.");
+        log.info("FirstAidKitApplication has started successfully.");
     }
 
     @PreDestroy
     @SuppressWarnings("unused")
     public void onExit() {
-        log.info("Application is shutting down.");
+        log.info("FirstAidKitApplication is shutting down.");
     }
 }

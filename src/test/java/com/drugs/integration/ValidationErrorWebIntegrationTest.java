@@ -1,4 +1,4 @@
-package com.drugs.controller.exception;
+package com.drugs.integration;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;

@@ -12,9 +12,9 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.util.List;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class PdfExportService {
 
     private static PdfPTable getPdfPTable(List<DrugsDTO> drugs) {

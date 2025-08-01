@@ -1,4 +1,4 @@
-package com.drugs.infrastructure.security;
+package com.drugs.infrastructure.database.entity;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;

@@ -1,4 +1,4 @@
-package com.drugs.infrastructure.mail;
+package com.drugs.infrastructure.email;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
