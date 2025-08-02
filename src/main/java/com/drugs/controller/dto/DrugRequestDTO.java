@@ -13,8 +13,8 @@ import lombok.NoArgsConstructor;
 @Schema(description = "Request object for creating a new drug")
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class DrugsRequestDTO {
+@Builder(toBuilder = true)
+public class DrugRequestDTO {
 
     @NotBlank(message = "Drug name must not be blank")
     @Size(min = 2, max = 100, message = "Drug name must be between 2 and 100 characters")
@@ -25,7 +25,7 @@ public class DrugsRequestDTO {
     @NotBlank(message = "Form must not be blank")
     @NotNull(message = "Form must not be null")
     @Size(max = 36, message = "Form must be at most 50 characters")
-    @ValueOfEnum(enumClass = DrugsFormDTO.class, message = "Invalid form. Accepted values: {enumValues}")
+    @ValueOfEnum(enumClass = DrugFormDTO.class, message = "Invalid form. Accepted values: {enumValues}")
     @Schema(description = "Form of the drug", example = "PILLS")
     private String form;
 

@@ -3,7 +3,7 @@ package com.drugs.controller.dto;
 import lombok.Getter;
 
 @Getter
-public enum DrugsFormDTO {
+public enum DrugFormDTO {
     GEL("Żel"),
     PILLS("Tabletki"),
     SYRUP("Syrop"),
@@ -24,7 +24,7 @@ public enum DrugsFormDTO {
 
     private final String label;
 
-    DrugsFormDTO(String label) {
+    DrugFormDTO(String label) {
         this.label = label;
     }
 }

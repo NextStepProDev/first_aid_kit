@@ -1,6 +1,6 @@
 package com.drugs.infrastructure.pdf;
 
-import com.drugs.controller.dto.DrugsDTO;
+import com.drugs.controller.dto.DrugDTO;
 import com.lowagie.text.*;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
@@ -17,7 +17,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class PdfExportService {
 
-    private static PdfPTable getPdfPTable(List<DrugsDTO> drugs) {
+    private static PdfPTable getPdfPTable(List<DrugDTO> drugs) {
         PdfPTable table = new PdfPTable(4);
         table.setWidthPercentage(100);
         table.addCell("ID");
@@ -25,10 +25,10 @@ public class PdfExportService {
         table.addCell("Form");
         table.addCell("Expiration");
 
-        for (DrugsDTO drug : drugs) {
-            table.addCell(String.valueOf(drug.getDrugsId()));
-            table.addCell(drug.getDrugsName());
-            table.addCell(drug.getDrugsForm().name());
+        for (DrugDTO drug : drugs) {
+            table.addCell(String.valueOf(drug.getDrugId()));
+            table.addCell(drug.getDrugName());
+            table.addCell(drug.getDrugForm().name());
             table.addCell(drug.getExpirationDate().toLocalDate().toString());
         }
         return table;
@@ -40,7 +40,7 @@ public class PdfExportService {
      * @param drugs List of drugs to include in the PDF.
      * @return ByteArrayInputStream containing the generated PDF.
      */
-    public ByteArrayInputStream generatePdf(List<DrugsDTO> drugs) {
+    public ByteArrayInputStream generatePdf(List<DrugDTO> drugs) {
 
         log.info("Starting PDF generation for drug list");
 

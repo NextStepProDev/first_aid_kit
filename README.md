@@ -32,24 +32,83 @@ feature is also available for listing current drugs.
   
 - **Statistics**:
   - Get statistics on the total number of drugs, expired drugs, active drugs, and alerts sent.
-  
-- **API Endpoints**:
-  - List all drugs (`GET /api/drugs`).
-  - Get drug details by name (`GET /api/drugs/by-name?name={name}`).
-  - Update a drug (`PUT /api/drugs`).
-  - Delete a drug (`DELETE /api/drugs/{id}`).
-  - Get drug statistics (`GET /api/drugs/statistics`).
-  - Add a new drug (`POST /api/drugs`)
-  - Get simple list of drugs (`GET /api/drugs/simple`)
-  - Get expired drugs (`GET /api/drugs/expired`)
-  - Get drugs expiring in a specific month (`GET /api/drugs/expiring?year={year}&month={month}`)
-  - Get sorted drugs (`GET /api/drugs/sorted?sortBy={field}`)
-  - Export drugs list to PDF (`GET /api/drugs/export/pdf`) → returns a downloadable PDF file
-  - Send test email (`GET /api/email/test`)
-  - Send expiry alert emails (`GET /api/email/alert`)
 
-- **Caching for performance**:
-  - Frequently accessed drug data is cached to reduce database load and improve response time.
+
+## 📦 API Endpoints
+
+Full documentation available via [Swagger UI](http://localhost:8081/swagger-ui/index.html).
+
+### 🔹 CRUD Operations
+- **`GET /api/drugs`**  
+  _Returns a list of all drugs in the database._
+
+- **`GET /api/drugs/{id}`**  
+  _Returns a drug by its ID._
+
+- **`POST /api/drugs`**  
+  _Adds a new drug to the database._
+
+- **`PUT /api/drugs/{id}`**  
+  _Updates an existing drug by its ID._
+
+- **`DELETE /api/drugs/{id}`**  
+  _Deletes a drug by its ID._
+
+---
+
+### 🔎 Filtering & Search
+- **`GET /api/drugs/by-name?name={value}`**  
+  _Returns drugs matching the given name (case-insensitive)._
+
+- **`GET /api/drugs/by-description?description={text}`**  
+  _Searches for drugs containing the given text in their description._
+
+- **`GET /api/drugs/by-form?form={value}`**  
+  _Returns drugs matching the given form._
+
+- **`GET /api/drugs/expiration-until?year={yyyy}&month={mm}`**  
+  _Returns drugs expiring until the specified year and month._
+
+- **`GET /api/drugs/expired`**  
+  _Returns a list of expired drugs._
+
+- **`GET /api/drugs/sorted?sortBy={field}`**  
+  _Returns drugs sorted by the specified field (`drugsName`, `expirationDate`, `drugsForm`)._
+
+- **`GET /api/drugs/paged?page=0&size=10&sort=field,asc`**  
+  _Returns paginated list of drugs._
+
+---
+
+### 📚 Supplementary
+- **`GET /api/drugs/simple`**  
+  _Returns a simplified list of drugs (ID, name, form, expiration)._
+
+- **`GET /api/drugs/forms`**  
+  _Returns available drug form enum values._
+
+- **`GET /api/drugs/forms/dictionary`**  
+  _Returns a dictionary of drug forms and their labels._
+
+- **`GET /api/drugs/statistics`**  
+  _Returns statistics (total, expired, active, alerts sent, etc.)._
+
+- **`GET /api/drugs/export/pdf`**  
+  _Exports the full drug list to PDF._
+
+- **`GET /api/drugs/alert`**  
+  _Sends expiry alert emails for drugs expiring in the current month._
+
+---
+
+### 💾 Performance & Caching
+
+To improve performance, the application uses Spring Cache backed by Caffeine:
+
+- Frequently accessed drug data is cached to reduce database load and improve response time.
+- Cached entries expire automatically after 10 minutes.
+- Write operations invalidate relevant caches to ensure consistency.
+- Configuration is managed via `spring.cache.caffeine.spec` in `application.yml`.
   
 ## Prerequisites
 
@@ -173,14 +232,7 @@ docker volume inspect first_aid_kit_postgres_data
 - Use `.env.example` to share required configuration without secrets
 - Environment variables are injected into the application via `docker-compose.yml`
 - Mail credentials should use application-specific passwords (not your Gmail login)
-
-## Performance Optimizations
-
-The application uses Spring Cache with a Caffeine backend to improve performance:
-- Caches method results such as drug listings and queries.
-- Cached entries expire automatically after 10 minutes.
-- Write operations invalidate relevant caches to ensure consistency.
-- Configuration is managed via `spring.cache.caffeine.spec` in `application.yml`.
+- Use strong passwords for database and email accounts
 
 
 ## 📚 API Documentation
@@ -209,10 +261,12 @@ Swagger UI: [http://localhost:8081/swagger-ui/index.html](http://localhost:8081/
 - `mapper/` – MapStruct mappers
 - `configuration/` – Spring & cache configuration
 - `bootstrap/` – initial sample data loading
+- `integration/` – integration tests (Testcontainers)
 
 ## ✅ Tests
 
-This project includes unit and integration tests (Testcontainers and real PostgreSQL) using JUnit and Spring Test.  
+The project includes unit, web, and integration tests using JUnit, Spring Test, and Testcontainers.
+Core areas like logic, validation, error handling, and email alerts are covered.  
 You can run tests using:
 
 ```bash
@@ -257,18 +311,18 @@ Response example:
 ```json
 [
   {
-    "drugsId": 1,
-    "drugsName": "Paracetamol",
-    "drugsForm": "PILL",
+    "drugId": 1,
+    "drugName": "Paracetamol",
+    "drugForm": "PILL",
     "expirationDate": "2025-10-31T00:00:00Z",
-    "drugsDescription": "Painkiller"
+    "drugDescription": "Painkiller"
   },
   {
-    "drugsId": 2,
-    "drugsName": "Ibuprofen",
-    "drugsForm": "GEL",
+    "drugId": 2,
+    "drugName": "Ibuprofen",
+    "drugForm": "GEL",
     "expirationDate": "2025-10-15T00:00:00Z",
-    "drugsDescription": "Used to treat pain and fever"
+    "drugDescription": "Used to treat pain and fever"
   }
 ]
 ```
@@ -277,4 +331,4 @@ Response example:
 
 This project is licensed under the MIT License – see the [LICENSE](LICENSE) file for details.
 
-Made with ❤️ during my journey to become a Java Developer – [Mateusz Nawratek](https://www.linkedin.com/in/mateusz-nawratek-909752356)
+Made with ❤️ during my journey to become a professional Java Developer – [Mateusz Nawratek](https://www.linkedin.com/in/mateusz-nawratek-909752356)

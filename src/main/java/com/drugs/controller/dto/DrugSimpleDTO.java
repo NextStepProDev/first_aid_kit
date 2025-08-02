@@ -10,8 +10,8 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 public class DrugSimpleDTO {
-    private Integer drugsId;
-    private String drugsName;
-    private DrugsFormDTO drugsForm;
+    private Integer drugId;
+    private String drugName;
+    private DrugFormDTO drugForm;
     private String expirationDate;
 }

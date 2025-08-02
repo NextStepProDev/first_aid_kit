@@ -24,6 +24,8 @@ public class DrugIntegrationTest extends AbstractIntegrationTest {
     @SuppressWarnings("unused")
     private MockMvc mockMvc;
 
+    String url = "/api/drugs/";
+
     @Test
     @DisplayName("Should insert new drug into database successfully")
     void shouldAddNewDrugSuccessfully() throws Exception {
@@ -66,13 +68,13 @@ public class DrugIntegrationTest extends AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestJson))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.drugsName").value("Paracetamol"));
+                .andExpect(jsonPath("$.drugName").value("Paracetamol"));
 
         // 2. Verify result
         mockMvc.perform(get("/api/drugs")).andDo(print());
         mockMvc.perform(get("/api/drugs"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[*].drugsName").value(org.hamcrest.Matchers.hasItem("Paracetamol")));
+                .andExpect(jsonPath("$[*].drugName").value(org.hamcrest.Matchers.hasItem("Paracetamol")));
     }
 
     @Test
@@ -134,18 +136,18 @@ public class DrugIntegrationTest extends AbstractIntegrationTest {
 
         // 2. Extract the drug ID
         String responseBody = result.getResponse().getContentAsString();
-        int drugId = JsonPath.read(responseBody, "$.drugsId");
+        int drugId = JsonPath.read(responseBody, "$.drugId");
 
         // 3. Update the drug
-        mockMvc.perform(put("/api/drugs/" + drugId)
+        mockMvc.perform(put(url + drugId)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestJsonUpdated))
                 .andExpect(status().isNoContent());
 
         // 4. Verify result
-        mockMvc.perform(get("/api/drugs/" + drugId))
+        mockMvc.perform(get(url + drugId))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.drugsForm").value("GEL"));
+                .andExpect(jsonPath("$.drugForm").value("GEL"));
     }
 
     @Test
@@ -168,24 +170,25 @@ public class DrugIntegrationTest extends AbstractIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(requestJson))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.drugsName").value("Paracetamol"))
+                .andExpect(jsonPath("$.drugName").value("Paracetamol"))
                 .andReturn();
 
 
         // 2. Extract the drug ID
         String responseBody = result.getResponse().getContentAsString();
-        int drugId = JsonPath.read(responseBody, "$.drugsId");
+        int drugId = JsonPath.read(responseBody, "$.drugId");
 
         // 3. Verify the drug exists
-        mockMvc.perform(get("/api/drugs/" + drugId))
+
+        mockMvc.perform(get(url + drugId))
                 .andExpect(status().isOk());
 
         // 3. Delete the drug
-        mockMvc.perform(delete("/api/drugs/" + drugId))
+        mockMvc.perform(delete(url + drugId))
                 .andExpect(status().isNoContent());
 
         // 4. Verify result
-        mockMvc.perform(get("/api/drugs/" + drugId))
+        mockMvc.perform(get(url + drugId))
                 .andExpect(status().isNotFound());
 
     }
@@ -244,14 +247,14 @@ public class DrugIntegrationTest extends AbstractIntegrationTest {
         mockMvc.perform(get("/api/drugs/by-form")
                         .param("form", "PILLS"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[*].drugsForm").value(Matchers.hasItem("PILLS")))
+                .andExpect(jsonPath("$[*].drugForm").value(Matchers.hasItem("PILLS")))
                 .andExpect(jsonPath("$.length()").value(2));
 
         // 2. Get drugs by name
         mockMvc.perform(get("/api/drugs/by-name")
                         .param("name", "Altacet"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[*].drugsName").value(Matchers.hasItem("Altacet")))
+                .andExpect(jsonPath("$[*].drugName").value(Matchers.hasItem("Altacet")))
                 .andExpect(jsonPath("$.length()").value(1));
     }
 
@@ -277,9 +280,9 @@ public class DrugIntegrationTest extends AbstractIntegrationTest {
 
         mockMvc.perform(get("/api/drugs"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].drugsName").value("Paracetamol"))
-                .andExpect(jsonPath("$[0].drugsForm").value("PILLS"))
-                .andExpect(jsonPath("$[0].drugsDescription").value("Painkiller"))
+                .andExpect(jsonPath("$[0].drugName").value("Paracetamol"))
+                .andExpect(jsonPath("$[0].drugForm").value("PILLS"))
+                .andExpect(jsonPath("$[0].drugDescription").value("Painkiller"))
                 .andExpect(jsonPath("$.length()").value(1));
     }
 
@@ -288,7 +291,7 @@ public class DrugIntegrationTest extends AbstractIntegrationTest {
     void shouldReturn404WhenDrugNotFoundById() throws Exception {
         int nonExistingId = 9999;
 
-        mockMvc.perform(get("/api/drugs/" + nonExistingId))
+        mockMvc.perform(get(url + nonExistingId))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status").value(404))
                 .andExpect(jsonPath("$.message").value("Drug not found with ID: 9999"));
@@ -316,7 +319,7 @@ public class DrugIntegrationTest extends AbstractIntegrationTest {
         mockMvc.perform(get("/api/drugs/by-name")
                         .param("name", "Altacet"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[*].drugsName").value(Matchers.hasItem("Altacet")))
+                .andExpect(jsonPath("$[*].drugName").value(Matchers.hasItem("Altacet")))
                 .andExpect(jsonPath("$.length()").value(1));
     }
 }

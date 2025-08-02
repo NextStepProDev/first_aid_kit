@@ -1,7 +1,7 @@
 package com.drugs.integration;
 
 import com.drugs.config.NoSecurityConfig;
-import com.drugs.infrastructure.database.repository.DrugsRepository;
+import com.drugs.infrastructure.database.repository.DrugRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -14,7 +14,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
 @Testcontainers
-@SpringBootTest
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("test")
 @Import(NoSecurityConfig.class)
 public abstract class AbstractIntegrationTest {
@@ -26,13 +26,13 @@ public abstract class AbstractIntegrationTest {
             .withUsername("test")
             .withPassword("test");
     @Autowired
-    protected DrugsRepository drugsRepository;
+    protected DrugRepository drugRepository;
     @Autowired
     protected CacheManager cacheManager;
 
     @BeforeEach
     void resetData() {
-        drugsRepository.deleteAll();
+        drugRepository.deleteAll();
         cacheManager.getCacheNames().forEach(name -> {
             Cache cache = cacheManager.getCache(name);
             if (cache != null) {

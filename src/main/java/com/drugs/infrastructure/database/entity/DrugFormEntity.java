@@ -15,7 +15,7 @@ import java.util.Set;
 @AllArgsConstructor
 @NoArgsConstructor
 @Table(name = "drugs_form")
-public class DrugsFormEntity {
+public class DrugFormEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -25,7 +25,7 @@ public class DrugsFormEntity {
     @Column(name = "name", nullable = false, unique = true)
     private String name;
 
-    @OneToMany(mappedBy = "drugsForm", fetch = FetchType.LAZY)
+    @OneToMany(mappedBy = "drugForm", fetch = FetchType.LAZY)
     @JsonIgnore
-    private Set<DrugsEntity> drugs;
+    private Set<DrugEntity> drugs;
 }

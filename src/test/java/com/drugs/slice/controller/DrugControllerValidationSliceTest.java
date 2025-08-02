@@ -1,14 +1,11 @@
 package com.drugs.slice.controller;
 
 import com.drugs.config.NoSecurityConfig;
-import com.drugs.controller.DrugsController;
-import com.drugs.infrastructure.database.mapper.DrugsMapper;
-import com.drugs.infrastructure.database.repository.DrugsRepository;
-import com.drugs.infrastructure.email.EmailService;
+import com.drugs.controller.DrugController;
 import com.drugs.infrastructure.pdf.PdfExportService;
-import com.drugs.service.DrugsFormService;
-import com.drugs.service.DrugsService;
+import com.drugs.service.DrugService;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -25,9 +22,9 @@ import java.util.stream.Stream;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(DrugsController.class)
+@WebMvcTest(DrugController.class)
 @Import(NoSecurityConfig.class) // to jest konieczne, ponieważ security blokuje test
-public class DrugsControllerValidationSliceTest {
+public class DrugControllerValidationSliceTest {
 
     @Autowired
     @SuppressWarnings("unused")
@@ -35,23 +32,7 @@ public class DrugsControllerValidationSliceTest {
 
     @MockitoBean
     @SuppressWarnings("unused")
-    private DrugsRepository drugsRepository;
-
-    @MockitoBean
-    @SuppressWarnings("unused")
-    private DrugsFormService drugsFormService;
-
-    @MockitoBean
-    @SuppressWarnings("unused")
-    private DrugsMapper drugsMapper;
-
-    @MockitoBean
-    @SuppressWarnings("unused")
-    private EmailService emailService;
-
-    @MockitoBean
-    @SuppressWarnings("unused")
-    private DrugsService drugsService;
+    private DrugService drugService;
 
     @MockitoBean
     @SuppressWarnings("unused")
@@ -172,7 +153,6 @@ public class DrugsControllerValidationSliceTest {
     @MethodSource("formProvider")
     @DisplayName("Should return 201 for valid form and 400 for invalid form")
     // slice test, czyli testujemy tylko kontroler
-    @SuppressWarnings("unused")
     void shouldReturnBadRequestForInvalidForm(boolean isValid, String form) throws Exception {
         String json = buildJson("Ibuprofen", form, 2025, 12, "lek przeciwbólowy");
         mockMvc.perform(
@@ -186,7 +166,6 @@ public class DrugsControllerValidationSliceTest {
     @ParameterizedTest
     @MethodSource("invalidDescriptionProvider")
     @DisplayName("Should return 201 for valid description and 400 for invalid description")
-    @SuppressWarnings("unused")
     void shouldReturnBadRequestForInvalidDescription(Boolean isValid, String description) throws Exception {
         String json = buildJson("Ibuprofen", "PILLS", 2025, 12, description);
         mockMvc.perform(
@@ -200,7 +179,6 @@ public class DrugsControllerValidationSliceTest {
     @ParameterizedTest
     @MethodSource("formBlankOrNullProvider")
     @DisplayName("Should return 400 for null or blank form values")
-    @SuppressWarnings("unused")
     void shouldReturnBadRequestForBlankOrNullForm(boolean isValid, String form) throws Exception {
         String json = buildJson("Ibuprofen", form, 2025, 12, "Painkiller for fever");
         mockMvc.perform(
@@ -209,5 +187,15 @@ public class DrugsControllerValidationSliceTest {
                                 .content(json)
                 )
                 .andExpect(isValid ? status().isCreated() : status().isBadRequest());
+    }
+
+    @Test
+    @DisplayName("Should return 201 for valid request")
+    void shouldReturn201ForValidRequest() throws Exception {
+        String json = buildJson("Ibuprofen", "PILLS", 2025, 12, "lek przeciwbólowy");
+        mockMvc.perform(post("/api/drugs")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isCreated());
     }
 }

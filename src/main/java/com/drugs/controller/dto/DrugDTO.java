@@ -11,11 +11,11 @@ import java.time.OffsetDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class DrugsDTO {
+public class DrugDTO {
 
-    private Integer drugsId;
-    private String drugsName;
-    private DrugsFormDTO drugsForm;
+    private Integer drugId;
+    private String drugName;
+    private DrugFormDTO drugForm;
     private OffsetDateTime expirationDate;
-    private String drugsDescription;
+    private String drugDescription;
 }

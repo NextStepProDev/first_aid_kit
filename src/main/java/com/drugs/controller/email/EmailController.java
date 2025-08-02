@@ -1,10 +1,11 @@
 package com.drugs.controller.email;
 
 import com.drugs.infrastructure.email.EmailService;
-import com.drugs.service.DrugsService;
+import com.drugs.service.DrugService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -15,16 +16,13 @@ import org.springframework.web.bind.annotation.RestController;
 @SuppressWarnings("unused")
 public class EmailController {
 
-    private final DrugsService drugsService;
+    private final DrugService drugService;
     private final EmailService emailService;
 
-    @GetMapping("/alert")
+    @PostMapping("/alerts")
     @SuppressWarnings("unused")
-    public String sendExpiryAlerts() {
-        drugsService.sendDefaultExpiryAlertEmails();
-
-        log.info("Expiry alert emails have been sent.");
-
-        return "Expiry alert emails have been sent";
+    public ResponseEntity<String> sendAlerts() {
+        drugService.sendDefaultExpiryAlertEmails();
+        return ResponseEntity.ok("Expiry alert emails have been sent");
     }
 }
