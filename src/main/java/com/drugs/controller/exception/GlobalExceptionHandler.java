@@ -1,17 +1,16 @@
 package com.drugs.controller.exception;
 
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
-import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.time.OffsetDateTime;
 import java.util.LinkedHashMap;
@@ -33,7 +32,7 @@ public class GlobalExceptionHandler {
      * <p>
      * Note: If any DTO field violates annotations like @NotBlank, @Min, @Pattern, or custom validations
      * (e.g., @ValidDrugsForm), Spring will throw MethodArgumentNotValidException before reaching your controller!
-     * */
+     */
 //    Jeśli jakiekolwiek pole DTO łamie adnotacje @NotBlank, @Min, @Pattern, lub niestandardową walidację
 //    (@ValidDrugsForm) to Spring automatycznie rzuca MethodArgumentNotValidException, zanim nawet wejdzie do Twojego
 //    kontrolera!
@@ -54,6 +53,8 @@ public class GlobalExceptionHandler {
                 .stream()
                 .toList();
 
+        log.error("handleValidationErrors - Validation error occurred: {}", errors);
+
         log.warn("Validation error occurred: {}", errors);
 
         ValidationErrorMessageDTO validationError = new ValidationErrorMessageDTO(
@@ -66,22 +67,56 @@ public class GlobalExceptionHandler {
     }
 
     /**
-     * Handles constraint violations for request parameters (e.g. @RequestParam, @PathVariable).
-     * Returns a list of field validation errors.
+     * Handles type mismatch errors for request parameters (e.g. @RequestParam, @PathVariable).
+     * Returns a BAD REQUEST response with an error message.
      */
-    @ExceptionHandler(ConstraintViolationException.class)
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
     @SuppressWarnings("unused")
-    public ResponseEntity<List<FieldValidationError>> handleConstraintViolation(ConstraintViolationException ex) {
-        log.warn("Constraint violation handler triggered: {}", ex.getMessage());
-        List<FieldValidationError> errors = ex.getConstraintViolations().stream()
-                .map(violation -> new FieldValidationError(
-                        extractFieldName(violation.getPropertyPath().toString()),
-                        violation.getInvalidValue(),
-                        violation.getMessage()))
-                .toList();
-        return ResponseEntity.badRequest().body(errors);
+    public ResponseEntity<ErrorMessage> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        String message = String.format("Invalid value for parameter '%s': %s", ex.getName(), ex.getValue());
+        log.error("handleTypeMismatch - {}", message);
+        return ResponseEntity
+                .badRequest()
+                .body(new ErrorMessage(400, message));
     }
 
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    @SuppressWarnings("unused")
+    public ResponseEntity<ErrorMessage> handleHandlerMethodValidationException(HandlerMethodValidationException ex) {
+        log.warn("Validation error: {}", ex.getMessage());
+
+        ex.getMessage();
+        String message = ex.getMessage();
+        log.error("handleHandlerMethodValidationException - Validation error: {}", ex.getMessage());
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorMessage(400, message));
+    }
+
+//    /**
+//     * Handles constraint violations for request parameters (e.g. @RequestParam, @PathVariable).
+//     * Returns a list of field validation errors.
+//     */
+    // ❌ NOT used in Spring Boot 3.1+ automatic validation anymore
+    // TODO: Remove if not used manually in your service/logic
+//    @ExceptionHandler(ConstraintViolationException.class)
+//    @SuppressWarnings("unused")
+//    public ResponseEntity<ErrorMessage> handleConstraintViolation(ConstraintViolationException ex) {
+//        log.warn("Constraint violation handler triggered: {}", ex.getMessage());
+//
+//        String combinedMessage = ex.getConstraintViolations().stream()
+//                .map(violation -> {
+//                    String field = extractFieldName(violation.getPropertyPath().toString());
+//                    return field + ": " + violation.getMessage();
+//                })
+//                .collect(Collectors.joining("; "));
+//
+//        return ResponseEntity.badRequest()
+//                .body(new ErrorMessage(400, combinedMessage));
+//    }
+//
     /**
      * Handles DrugNotFoundException when a requested drug does not exist.
      * Returns a 404 NOT FOUND status with an error message.
@@ -89,7 +124,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(DrugNotFoundException.class)
     public ResponseEntity<ErrorMessage> handleDrugNotFound(DrugNotFoundException ex) {
         log.warn("Drug not found: {}", ex.getMessage());
-//        return new ResponseEntity<>(ex.getMessage(), HttpStatus.NOT_FOUND);
+        log.error("handleDrugNotFound - Drug not found: {}", ex.getMessage());
         return ResponseEntity.status(404).body(new ErrorMessage(404, ex.getMessage()));
     }
 
@@ -99,48 +134,47 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<String> handleGeneralException(Exception ex) {
         log.error("Unhandled exception caught: ", ex);
+        log.error("handleGeneralException - Unhandled exception caught: ", ex);
         return new ResponseEntity<>("An error occurred", HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
+//    /**
+//     * Handles binding errors when Spring cannot bind request parameters to objects.
+//     * Returns a BAD REQUEST response with field details.
+//     */
+    // ❌ Only used for form-like object binding (@ModelAttribute) — which you're not using
+// TODO: Remove if not using @ModelAttribute binding
+
+//    @ExceptionHandler(BindException.class)
+//    @ResponseStatus(HttpStatus.BAD_REQUEST)
+//    @SuppressWarnings("unused")
+//    public Map<String, Object> handleBindException(BindException ex) {
+//        FieldError error = ex.getFieldError();
+//
+//        log.warn("Bind exception occurred on field '{}': {}", error != null ? error.getField() : "unknown", error != null ? error.getDefaultMessage() : "unknown");
+//
+//        Map<String, Object> response = new LinkedHashMap<>();
+//        response.put("error", "Invalid input");
+//        response.put("field", error != null ? error.getField() : null);
+//        response.put("rejectedValue", error != null ? error.getRejectedValue() : null);
+//        response.put("message", error != null ? error.getDefaultMessage() : "Invalid value");
+//        response.put("status", HttpStatus.BAD_REQUEST.value());
+//        response.put("timestamp", OffsetDateTime.now().toString());
+//
+//        return response;
+//    }
+
     /**
-     * Handles binding errors when Spring cannot bind request parameters to objects.
-     * Returns a BAD REQUEST response with field details.
-     */
-    @ExceptionHandler(BindException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    @SuppressWarnings("unused")
-    public Map<String, Object> handleBindException(BindException ex) {
-        FieldError error = ex.getFieldError();
-
-        log.warn("Bind exception occurred on field '{}': {}", error != null ? error.getField() : "unknown", error != null ? error.getDefaultMessage() : "unknown");
-
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("error", "Invalid input");
-        response.put("field", error != null ? error.getField() : null);
-        response.put("rejectedValue", error != null ? error.getRejectedValue() : null);
-        response.put("message", error != null ? error.getDefaultMessage() : "Invalid value");
-        response.put("status", HttpStatus.BAD_REQUEST.value());
-        response.put("timestamp", OffsetDateTime.now().toString());
-
-        return response;
-    }
-
-    /**
-     * Handles InvalidSortFieldException when a sort field is invalid.
+     * Handles InvalidSortFieldException when an unknown sort field is requested.
      * Returns a BAD REQUEST response with an error message.
      */
     @ExceptionHandler(InvalidSortFieldException.class)
     @SuppressWarnings("unused")
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ResponseEntity<Map<String, Object>> handleInvalidSortField(InvalidSortFieldException ex,
-                                                                      HttpServletRequest request) {
-        Map<String, Object> body = Map.of(
-                "status", 400,
-                "error", "Bad Request",
-                "message", ex.getMessage(),
-                "path", request.getRequestURI()
-        );
-        return ResponseEntity.badRequest().body(body);
+    public ResponseEntity<ErrorMessage> handleInvalidSortFieldException(InvalidSortFieldException ex) {
+        log.warn("Invalid sort field: {}", ex.getMessage());
+        log.error("handleInvalidSortFieldException - Invalid sort field: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorMessage(400, "Unknown sort field: " + ex.getMessage()));
     }
 
     /**
@@ -152,6 +186,7 @@ public class GlobalExceptionHandler {
     @SuppressWarnings("unused")
     public Map<String, Object> handleHttpMessageNotReadable(HttpMessageNotReadableException ex) {
         log.warn("Malformed JSON request: {}", ex.getMessage());
+        log.error("handleHttpMessageNotReadable - Malformed JSON request: {}", ex.getMessage());
 
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("error", "Malformed JSON");
@@ -169,6 +204,7 @@ public class GlobalExceptionHandler {
     @SuppressWarnings("unused")
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorMessage> handleIllegalArgument(IllegalArgumentException ex) {
+        log.error("handleIllegalArgument - {}", ex.getMessage());
         return ResponseEntity
                 .badRequest()
                 .body(new ErrorMessage(400, ex.getMessage()));
@@ -185,14 +221,13 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ErrorMessage(500, "Failed to send expiry alert email. Please try again later."));
     }
-
-    /**
-     * Extracts the field name from a property path, which may contain nested properties.
-     * For example, "user.name" will return "name".
-     */
-    private String extractFieldName(String path) {
-        int lastDot = path.lastIndexOf(".");
-        return lastDot != -1 ? path.substring(lastDot + 1) : path;
-    }
-
+//
+//    /**
+//     * Extracts the field name from a property path, which may contain nested properties.
+//     * For example, "user.name" will return "name".
+//     */
+//    private String extractFieldName(String path) {
+//        int lastDot = path.lastIndexOf(".");
+//        return lastDot != -1 ? path.substring(lastDot + 1) : path;
+//    }
 }

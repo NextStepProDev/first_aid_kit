@@ -376,13 +376,14 @@ public class DrugService {
      */
     public List<DrugDTO> getAllSorted(String sortBy) {
         String field = resolveSortField(sortBy);
-        Sort sort = Sort.by(field).ascending(); // można dodać opcję descending jako rozszerzenie
+        Sort sort = Sort.by(field).ascending(); // TODO add descending option
         return drugRepository.findAll(sort).stream()
                 .map(drugMapper::mapToDTO)
                 .toList();
     }
 
     private String resolveSortField(String sortBy) {
+        log.info("Resolving sort field for: {}", sortBy);
         return switch (sortBy) {
             case "id" -> "drugId";
             case "name" -> "drugName";

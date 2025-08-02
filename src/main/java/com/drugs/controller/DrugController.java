@@ -17,6 +17,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.ByteArrayInputStream;
@@ -106,6 +107,7 @@ public class DrugController {
     }
 
     @GetMapping("/expiration-until")
+    @Validated
     @Operation(summary = "Get drugs expiring until", description = "Returns a list of drugs expiring until the " +
             "specified year and month")
     @SuppressWarnings("unused")
@@ -194,7 +196,7 @@ public class DrugController {
                     "Example values: 'name', 'expirationDate', 'form', 'description'"
     )
     @SuppressWarnings("unused")
-    public List<DrugDTO> getAllSorted(@RequestParam(defaultValue = "drugsName") String sortBy) {
+    public List<DrugDTO> getAllSorted(@RequestParam(defaultValue = "name") String sortBy) {
         log.info("Fetching drugs sorted by: {}", sortBy);
         return drugService.getAllSorted(sortBy);
     }

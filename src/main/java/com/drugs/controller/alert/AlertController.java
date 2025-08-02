@@ -1,4 +1,4 @@
-package com.drugs.controller.email;
+package com.drugs.controller.alert;
 
 import com.drugs.infrastructure.email.EmailService;
 import com.drugs.service.DrugService;
@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/email")
 @RequiredArgsConstructor
 @SuppressWarnings("unused")
-public class EmailController {
+public class AlertController {
 
     private final DrugService drugService;
     private final EmailService emailService;
