@@ -275,7 +275,7 @@ public class DrugService {
                         drug.getDrugDescription());
                 try {
                     emailService.sendEmail("djdefkon@gmail.com", subject, message);
-                    emailService.sendEmail("paula.konarska@gmail.com", subject, message);
+//                    emailService.sendEmail("paula.konarska@gmail.com", subject, message);
 
                     drug.setAlertSent(true);
                     drugRepository.save(drug);
@@ -375,8 +375,9 @@ public class DrugService {
      * @return a list of sorted drug data transfer objects
      */
     public List<DrugDTO> getAllSorted(String sortBy) {
+        // TODO: Implement descending sort option
         String field = resolveSortField(sortBy);
-        Sort sort = Sort.by(field).ascending(); // TODO add descending option
+        Sort sort = Sort.by(field).ascending();
         return drugRepository.findAll(sort).stream()
                 .map(drugMapper::mapToDTO)
                 .toList();
