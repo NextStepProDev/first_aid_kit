@@ -214,7 +214,7 @@ public class DrugController {
             @Parameter(
                     description = "Field to sort by",
                     example = "name",
-                    schema = @Schema(allowableValues = {"name", "form", "expirationDate", "description"})
+                    schema = @Schema(allowableValues = {"id", "name", "form", "expirationDate", "description"})
             )
             String sortBy,
 

@@ -35,6 +35,6 @@ public enum DrugFormDTO {
                 .filter(f -> f.name().equalsIgnoreCase(value))
                 .findFirst()
                 .orElseThrow(() ->
-                        new IllegalArgumentException("Invalid value for parameter 'sortBy': " + value));
+                        new IllegalArgumentException("Invalid drug form: " + value));
     }
 }

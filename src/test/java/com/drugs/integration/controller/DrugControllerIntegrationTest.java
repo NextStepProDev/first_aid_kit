@@ -2,6 +2,7 @@ package com.drugs.integration.controller;
 
 import com.drugs.controller.dto.*;
 import com.drugs.controller.exception.EmailSendingException;
+import com.drugs.controller.exception.ErrorMessage;
 import com.drugs.infrastructure.database.entity.DrugEntity;
 import com.drugs.infrastructure.database.entity.DrugFormEntity;
 import com.drugs.infrastructure.database.repository.DrugFormRepository;
@@ -394,265 +395,364 @@ class DrugControllerIntegrationTest extends AbstractIntegrationTest {
                 assertThat(drug.getExpirationDate()).isBeforeOrEqualTo(untilDate);
             }
         }
+    }
 
-        @Nested
-        @DisplayName("GET /api/drugs/by-description")
-        class GetDrugsByDescription {
+    @Nested
+    @DisplayName("GET /api/drugs/by-description")
+    class GetDrugsByDescription {
 
-            @Test
-            @DisplayName("should return drugs containing given description")
-            void shouldReturnDrugsWhenDescriptionMatches() {
-                // given
-                createAndPost6Drugs();
+        @Test
+        @DisplayName("should return drugs containing given description")
+        void shouldReturnDrugsWhenDescriptionMatches() {
+            // given
+            createAndPost6Drugs();
 
-                // when
-                ResponseEntity<List<DrugDTO>> response = restTemplate.exchange(
-                        getUrl("/api/drugs/by-description?description=common"),
-                        HttpMethod.GET,
-                        null,
-                        new ParameterizedTypeReference<>() {
-                        }
-                );
+            // when
+            ResponseEntity<List<DrugDTO>> response = restTemplate.exchange(
+                    getUrl("/api/drugs/by-description?description=common"),
+                    HttpMethod.GET,
+                    null,
+                    new ParameterizedTypeReference<>() {
+                    }
+            );
 
-                // then
-                assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-                List<DrugDTO> drugs = response.getBody();
-                assertThat(drugs).isNotNull();
-                assertThat(drugs).hasSize(6);
-                assertThat(drugs.getFirst().getDrugName()).isEqualTo("Aspirin");
-            }
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            List<DrugDTO> drugs = response.getBody();
+            assertThat(drugs).isNotNull();
+            assertThat(drugs).hasSize(6);
+            assertThat(drugs.getFirst().getDrugName()).isEqualTo("Aspirin");
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /api/drugs/by-form")
+    class GetDrugsByForm {
+
+        @Test
+        @DisplayName("should return drugs with given form")
+        void shouldReturnDrugsWhenFormMatches() {
+            // given
+            createAndPost6Drugs();
+
+            // when
+            ResponseEntity<List<DrugDTO>> response = restTemplate.exchange(
+                    getUrl("/api/drugs/by-form?form=GEL"),
+                    HttpMethod.GET,
+                    null,
+                    new ParameterizedTypeReference<>() {
+                    }
+            );
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            List<DrugDTO> drugs = response.getBody();
+            assertThat(drugs).isNotNull();
+            assertThat(drugs).hasSize(2);
+            assertThat(drugs.getFirst().getDrugForm()).isEqualTo(DrugFormDTO.GEL);
+            assertThat(drugs.getFirst().getDrugName()).isEqualTo("Altacet");
+            assertThat(drugs.get(1).getDrugName()).isEqualTo("Naproxen");
         }
 
-        @Nested
-        @DisplayName("GET /api/drugs/by-form")
-        class GetDrugsByForm {
+        @Test
+        void shouldReturn400_whenInvalidDrugFormGiven() {
+            ResponseEntity<String> response = restTemplate.exchange(
+                    getUrl("/api/drugs/by-form?form=INVALID"),
+                    HttpMethod.GET,
+                    null,
+                    String.class
+            );
 
-            @Test
-            @DisplayName("should return drugs with given form")
-            void shouldReturnDrugsWhenFormMatches() {
-                // given
-                createAndPost6Drugs();
-
-                // when
-                ResponseEntity<List<DrugDTO>> response = restTemplate.exchange(
-                        getUrl("/api/drugs/by-form?form=GEL"),
-                        HttpMethod.GET,
-                        null,
-                        new ParameterizedTypeReference<>() {
-                        }
-                );
-
-                // then
-                assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-                List<DrugDTO> drugs = response.getBody();
-                assertThat(drugs).isNotNull();
-                assertThat(drugs).hasSize(2);
-                assertThat(drugs.getFirst().getDrugForm()).isEqualTo(DrugFormDTO.GEL);
-                assertThat(drugs.getFirst().getDrugName()).isEqualTo("Altacet");
-                assertThat(drugs.get(1).getDrugName()).isEqualTo("Naproxen");
-            }
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getBody()).contains("Invalid drug form: INVALID");
         }
+    }
 
-        @Nested
-        @DisplayName("GET /api/drugs/by-name")
-        class GetDrugsByName {
+    @Nested
+    @DisplayName("GET /api/drugs/by-name")
+    class GetDrugsByName {
 
-            @Test
-            @DisplayName("should return drugs with given name")
-            void shouldReturnDrugsWhenNameMatches() {
-                // given
-                createAndPost6Drugs();
+        @Test
+        @DisplayName("should return drugs with given name")
+        void shouldReturnDrugsWhenNameMatches() {
+            // given
+            createAndPost6Drugs();
 
-                // when
-                ResponseEntity<List<DrugDTO>> response = restTemplate.exchange(
-                        getUrl("/api/drugs/by-name?name=aspirin"),
-                        HttpMethod.GET,
-                        null,
-                        new ParameterizedTypeReference<>() {
-                        }
-                );
-                List<DrugDTO> drugs = response.getBody();
+            // when
+            ResponseEntity<List<DrugDTO>> response = restTemplate.exchange(
+                    getUrl("/api/drugs/by-name?name=aspirin"),
+                    HttpMethod.GET,
+                    null,
+                    new ParameterizedTypeReference<>() {
+                    }
+            );
+            List<DrugDTO> drugs = response.getBody();
 
-                // then
-                assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-                assertThat(drugs).isNotNull();
-                assertThat(drugs.getFirst().getDrugName()).isEqualTo("Aspirin");
-            }
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(drugs).isNotNull();
+            assertThat(drugs.getFirst().getDrugName()).isEqualTo("Aspirin");
         }
+    }
 
-        @Nested
-        @DisplayName("GET /api/drugs/sorted")
-        class GetSortedDrugs {
+    @Nested
+    @DisplayName("GET /api/drugs/sorted")
+    class GetSortedDrugs {
 
-            @Test
-            @DisplayName("should return sorted drugs")
-            void shouldReturnDrugsWhenSorted() {
-                // given
-                createAndPost6Drugs();
+        @Test
+        @DisplayName("should return sorted drugs")
+        void shouldReturnDrugsWhenSorted() {
+            // given
+            createAndPost6Drugs();
 
-                // when
-                ResponseEntity<List<DrugDTO>> response = restTemplate.exchange(
-                        getUrl("/api/drugs/sorted?sortBy=name&direction=ASC"),
-                        HttpMethod.GET,
-                        null,
-                        new ParameterizedTypeReference<>() {
-                        }
-                );
+            // when
+            ResponseEntity<List<DrugDTO>> response = restTemplate.exchange(
+                    getUrl("/api/drugs/sorted?sortBy=name&direction=ASC"),
+                    HttpMethod.GET,
+                    null,
+                    new ParameterizedTypeReference<>() {
+                    }
+            );
 
-                // then
-                assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-                List<DrugDTO> drugs = response.getBody();
-                assertThat(drugs).isNotNull();
-                assertThat(drugs).hasSize(6);
-                assertThat(drugs.getFirst().getDrugName()).isEqualTo("Altacet");
-            }
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            List<DrugDTO> drugs = response.getBody();
+            assertThat(drugs).isNotNull();
+            assertThat(drugs).hasSize(6);
+            assertThat(drugs.getFirst().getDrugName()).isEqualTo("Altacet");
         }
+    }
 
-        @Nested
-        @DisplayName("GET /api/drugs/paged")
-        class GetPagedDrugs {
+    @Nested
+    @DisplayName("GET /api/drugs/paged")
+    class GetPagedDrugs {
 
-            @Test
-            @DisplayName("should return paged list of drugs")
-            void shouldReturnDrugsWhenPaged() {
-                // given
-                createAndPost6Drugs();
+        @Test
+        @DisplayName("should return paged list of drugs")
+        void shouldReturnDrugsWhenPaged() {
+            // given
+            createAndPost6Drugs();
 
-                // when
-                ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
-                        getUrl("/api/drugs/paged?page=0&size=3"),
-                        HttpMethod.GET,
-                        null,
-                        new ParameterizedTypeReference<>() {
-                        }
-                );
+            // when
+            ResponseEntity<Map<String, Object>> response = restTemplate.exchange(
+                    getUrl("/api/drugs/paged?page=0&size=3"),
+                    HttpMethod.GET,
+                    null,
+                    new ParameterizedTypeReference<>() {
+                    }
+            );
 
-                // then
-                Assertions.assertNotNull(response.getBody());
-                List<?> content = (List<?>) response.getBody().get("content");
-                assertThat(content).hasSize(3);
-                assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-                assertThat(response.getBody().get("totalElements")).isEqualTo(6);
-                assertThat(response.getBody().get("totalPages")).isEqualTo(2);
-            }
+            // then
+            Assertions.assertNotNull(response.getBody());
+            List<?> content = (List<?>) response.getBody().get("content");
+            assertThat(content).hasSize(3);
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            assertThat(response.getBody().get("totalElements")).isEqualTo(6);
+            assertThat(response.getBody().get("totalPages")).isEqualTo(2);
         }
+    }
 
-        @Nested
-        @DisplayName("GET /api/drugs/forms")
-        class GetDrugForms {
+    @Nested
+    @DisplayName("GET /api/drugs/forms")
+    class GetDrugForms {
 
-            @Test
-            @DisplayName("should return all available drug forms")
-            void shouldReturnAvailableDrugForms() {
-                // when
-                ResponseEntity<List<FormOption>> response = restTemplate.exchange(
-                        getUrl("/api/drugs/forms"),
-                        HttpMethod.GET,
-                        null,
-                        new ParameterizedTypeReference<>() {}
-                );
+        @Test
+        @DisplayName("should return all available drug forms")
+        void shouldReturnAvailableDrugForms() {
+            // when
+            ResponseEntity<List<FormOption>> response = restTemplate.exchange(
+                    getUrl("/api/drugs/forms"),
+                    HttpMethod.GET,
+                    null,
+                    new ParameterizedTypeReference<>() {
+                    }
+            );
 
-                // then
-                assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-                List<FormOption> forms = response.getBody();
-                assertThat(forms).isNotNull();
-                assertThat(forms).extracting(FormOption::value)
-                        .contains("pills", "gel", "drops", "syrup", "other");
-                assertThat(forms.size()).isEqualTo(DrugFormDTO.values().length);
-            }
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            List<FormOption> forms = response.getBody();
+            assertThat(forms).isNotNull();
+            assertThat(forms).extracting(FormOption::value)
+                    .contains("pills", "gel", "drops", "syrup", "other");
+            assertThat(forms.size()).isEqualTo(DrugFormDTO.values().length);
         }
+    }
 
-        @Nested
-        @DisplayName("GET /api/drugs/forms/dictionary")
-        class GetDrugFormsDictionary {
+    @Nested
+    @DisplayName("GET /api/drugs/forms/dictionary")
+    class GetDrugFormsDictionary {
 
-            @Test
-            @DisplayName("should return form labels dictionary")
-            void shouldReturnFormLabelsDictionary() {
-                // when
-                ResponseEntity<Map<String, String>> response = restTemplate.exchange(
-                        getUrl("/api/drugs/forms/dictionary"),
-                        HttpMethod.GET,
-                        null,
-                        new ParameterizedTypeReference<>() {
-                        }
-                );
+        @Test
+        @DisplayName("should return form labels dictionary")
+        void shouldReturnFormLabelsDictionary() {
+            // when
+            ResponseEntity<Map<String, String>> response = restTemplate.exchange(
+                    getUrl("/api/drugs/forms/dictionary"),
+                    HttpMethod.GET,
+                    null,
+                    new ParameterizedTypeReference<>() {
+                    }
+            );
 
-                // then
-                assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-                Map<String, String> dictionary = response.getBody();
-                assertThat(dictionary).isNotNull();
-                assertThat(dictionary).containsEntry("PILLS", "Tabletki");
-                assertThat(dictionary).containsEntry("GEL", "Żel");
-                assertThat(dictionary).containsEntry("DROPS", "Krople");
-                assertThat(dictionary).containsEntry("SYRUP", "Syrop");
-                assertThat(dictionary).containsEntry("OTHER", "Inne");
-                assertThat(dictionary.size()).isEqualTo(Arrays.stream(DrugFormDTO.values()).toList().size());
-            }
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            Map<String, String> dictionary = response.getBody();
+            assertThat(dictionary).isNotNull();
+            assertThat(dictionary).containsEntry("PILLS", "Tabletki");
+            assertThat(dictionary).containsEntry("GEL", "Żel");
+            assertThat(dictionary).containsEntry("DROPS", "Krople");
+            assertThat(dictionary).containsEntry("SYRUP", "Syrop");
+            assertThat(dictionary).containsEntry("OTHER", "Inne");
+            assertThat(dictionary.size()).isEqualTo(Arrays.stream(DrugFormDTO.values()).toList().size());
         }
+    }
 
-        @Nested
-        @DisplayName("GET /api/drugs/simple")
-        class GetSimpleDrugs {
+    @Nested
+    @DisplayName("GET /api/drugs/simple")
+    class GetSimpleDrugs {
 
-            @Test
-            @DisplayName("should return simplified list of drugs")
-            void shouldReturnSimpleDrugsList() {
-                // given
-                createAndPost6Drugs();
+        @Test
+        @DisplayName("should return simplified list of drugs")
+        void shouldReturnSimpleDrugsList() {
+            // given
+            createAndPost6Drugs();
 
-                // when
-                ResponseEntity<List<DrugSimpleDTO>> response = restTemplate.exchange(
-                        getUrl("/api/drugs/simple"),
-                        HttpMethod.GET,
-                        null,
-                        new ParameterizedTypeReference<>() {
-                        }
-                );
+            // when
+            ResponseEntity<List<DrugSimpleDTO>> response = restTemplate.exchange(
+                    getUrl("/api/drugs/simple"),
+                    HttpMethod.GET,
+                    null,
+                    new ParameterizedTypeReference<>() {
+                    }
+            );
 
-                // then
-                assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-                List<DrugSimpleDTO> simpleDrugs = response.getBody();
-                assertThat(simpleDrugs).isNotNull();
-                assertThat(simpleDrugs).hasSize(6);
-                assertThat(simpleDrugs.getFirst().getDrugName()).isEqualTo("Aspirin");
-                for (DrugSimpleDTO drug : simpleDrugs) {
-                    assertThat(drug.getDrugId()).isNotNull();
-                    assertThat(drug.getDrugName()).isNotBlank();
-                    assertThat(drug.getDrugForm()).isNotNull();
-                    assertThat(drug.getExpirationDate()).isNotNull();
-                }
-            }
-        }
-
-        @Nested
-        @DisplayName("POST /api/email/alerts")
-        class SendExpiryAlert {
-
-            @Test
-            @DisplayName("should return 500 INTERNAL_SERVER_ERROR when email sending fails")
-            void shouldReturnInternalServerErrorWhenEmailSendingFails() {
-                // given
-                OffsetDateTime now = OffsetDateTime.now();
-                DrugRequestDTO request = DrugRequestDtoBuilder.getValidDrugRequestDto()
-                        .toBuilder()
-                        .expirationYear(now.getYear())
-                        .expirationMonth(now.getMonthValue())
-                        .build();
-                restTemplate.postForEntity(getUrl("/api/drugs"), request, DrugDTO.class);
-
-                // and email will fail
-                doThrow(new EmailSendingException("Simulated failure", new RuntimeException("SMTP timeout")))
-                        .when(emailService)
-                        .sendEmail(anyString(), anyString(), anyString());
-
-                // when
-                ResponseEntity<String> response = restTemplate.postForEntity(getUrl("/api/email/alerts"), null, String.class);
-
-                // then
-                assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
-                assertThat(response.getBody()).contains("Failed to send expiry alert email");
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            List<DrugSimpleDTO> simpleDrugs = response.getBody();
+            assertThat(simpleDrugs).isNotNull();
+            assertThat(simpleDrugs).hasSize(6);
+            assertThat(simpleDrugs.getFirst().getDrugName()).isEqualTo("Aspirin");
+            for (DrugSimpleDTO drug : simpleDrugs) {
+                assertThat(drug.getDrugId()).isNotNull();
+                assertThat(drug.getDrugName()).isNotBlank();
+                assertThat(drug.getDrugForm()).isNotNull();
+                assertThat(drug.getExpirationDate()).isNotNull();
             }
         }
     }
+
+    @Nested
+    @DisplayName("POST /api/email/alerts")
+    class SendExpiryAlert {
+
+        @Test
+        @DisplayName("should return 500 INTERNAL_SERVER_ERROR when email sending fails")
+        void shouldReturnInternalServerErrorWhenEmailSendingFails() {
+            // given
+            OffsetDateTime now = OffsetDateTime.now();
+            DrugRequestDTO request = DrugRequestDtoBuilder.getValidDrugRequestDto()
+                    .toBuilder()
+                    .expirationYear(now.getYear())
+                    .expirationMonth(now.getMonthValue())
+                    .build();
+            restTemplate.postForEntity(getUrl("/api/drugs"), request, DrugDTO.class);
+
+            // and email will fail
+            doThrow(new EmailSendingException("Simulated failure", new RuntimeException("SMTP timeout")))
+                    .when(emailService)
+                    .sendEmail(anyString(), anyString(), anyString());
+
+            // when
+            ResponseEntity<String> response = restTemplate.postForEntity(getUrl("/api/email/alerts"), null, String.class);
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.INTERNAL_SERVER_ERROR);
+            assertThat(response.getBody()).contains("Failed to send expiry alert email");
+        }
+    }
+
+    @Nested
+    @DisplayName("GET /api/drugs/sorted")
+    class GetDrugsSortedTests {
+
+        @Test
+        @DisplayName("should return drugs sorted by name in ascending order")
+        void shouldReturnDrugsSortedByNameAsc() {
+            // given
+            DrugRequestDTO drug1 = DrugRequestDtoBuilder.getValidDrugRequestDto()
+                    .toBuilder().name("Paracetamol").build();
+            DrugRequestDTO drug2 = drug1.toBuilder().name("Ibuprofen").build();
+            DrugRequestDTO drug3 = drug1.toBuilder().name("Aspirin").build();
+
+            restTemplate.postForEntity(getUrl("/api/drugs"), drug1, DrugDTO.class);
+            restTemplate.postForEntity(getUrl("/api/drugs"), drug2, DrugDTO.class);
+            restTemplate.postForEntity(getUrl("/api/drugs"), drug3, DrugDTO.class);
+
+            // when
+            ResponseEntity<List<DrugDTO>> response = restTemplate.exchange(
+                    getUrl("/api/drugs/sorted?sortBy=name&direction=asc"),
+                    HttpMethod.GET,
+                    null,
+                    new ParameterizedTypeReference<>() {
+                    }
+            );
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            List<DrugDTO> drugs = response.getBody();
+            assertThat(drugs).isNotNull();
+            assertThat(drugs).extracting(DrugDTO::getDrugName)
+                    .containsExactly("Aspirin", "Ibuprofen", "Paracetamol");
+        }
+
+        @Test
+        @DisplayName("should return drugs sorted by name in descending order")
+        void shouldReturnDrugsSortedByNameDesc() {
+            // given
+            DrugRequestDTO drug1 = DrugRequestDtoBuilder.getValidDrugRequestDto()
+                    .toBuilder().name("Paracetamol").build();
+            DrugRequestDTO drug2 = drug1.toBuilder().name("Ibuprofen").build();
+            DrugRequestDTO drug3 = drug1.toBuilder().name("Aspirin").build();
+
+            restTemplate.postForEntity(getUrl("/api/drugs"), drug1, DrugDTO.class);
+            restTemplate.postForEntity(getUrl("/api/drugs"), drug2, DrugDTO.class);
+            restTemplate.postForEntity(getUrl("/api/drugs"), drug3, DrugDTO.class);
+
+            // when
+            ResponseEntity<List<DrugDTO>> response = restTemplate.exchange(
+                    getUrl("/api/drugs/sorted?sortBy=name&direction=desc"),
+                    HttpMethod.GET,
+                    null,
+                    new ParameterizedTypeReference<>() {
+                    }
+            );
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
+            List<DrugDTO> drugs = response.getBody();
+            assertThat(drugs).isNotNull();
+            assertThat(drugs).extracting(DrugDTO::getDrugName)
+                    .containsExactly("Paracetamol", "Ibuprofen", "Aspirin");
+        }
+
+        @Test
+        @DisplayName("should return 400 when direction param is missing")
+        void shouldReturn400WhenDirectionParamIsMissing() {
+            // when
+            ResponseEntity<ErrorMessage> response = restTemplate.exchange(
+                    getUrl("/api/drugs/sorted?sortBy=name"),
+                    HttpMethod.GET,
+                    null,
+                    new ParameterizedTypeReference<>() {
+                    }
+            );
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            ErrorMessage error = response.getBody();
+            assertThat(error).isNotNull();
+            assertThat(error.message()).contains("direction"); // lub dokładny komunikat
+        }
+    }
 }
+

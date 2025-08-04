@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -220,6 +221,14 @@ public class GlobalExceptionHandler {
         log.error("Email sending failed: {}", ex.getMessage(), ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ErrorMessage(500, "Failed to send expiry alert email. Please try again later."));
+    }
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    @SuppressWarnings("unused")
+    public ResponseEntity<ErrorMessage> handleMissingParam(MissingServletRequestParameterException ex) {
+        String message = "Missing required request parameter: " + ex.getParameterName();
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorMessage(400, message));
     }
 //
 //    /**

@@ -1,6 +1,7 @@
 package com.drugs.unit.service;
 
 import com.drugs.controller.dto.*;
+import com.drugs.controller.exception.DrugNotFoundException;
 import com.drugs.controller.exception.EmailSendingException;
 import com.drugs.controller.exception.InvalidSortFieldException;
 import com.drugs.infrastructure.database.entity.DrugEntity;
@@ -24,10 +25,12 @@ import org.springframework.data.domain.*;
 import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
@@ -78,12 +81,7 @@ class DrugServiceTest {
             entity.setExpirationDate(DateUtils.buildExpirationDate(2025, 1));
             entity.setDrugDescription("Painkiller");
 
-            DrugDTO expectedDTO = DrugDTO.builder()
-                    .drugId(drugId)
-                    .drugName("Aspirin")
-                    .expirationDate(DateUtils.buildExpirationDate(2025, 1))
-                    .drugDescription("Painkiller")
-                    .build();
+            DrugDTO expectedDTO = DrugDTO.builder().drugId(drugId).drugName("Aspirin").expirationDate(DateUtils.buildExpirationDate(2025, 1)).drugDescription("Painkiller").build();
 
             when(drugRepository.findById(drugId)).thenReturn(Optional.of(entity));
             when(drugMapper.mapToDTO(entity)).thenReturn(expectedDTO);
@@ -106,9 +104,7 @@ class DrugServiceTest {
         void shouldSaveDrug() {
             // given
             DrugFormDTO gel = DrugFormDTO.GEL;
-            DrugRequestDTO dto = new DrugRequestDTO(
-                    "Ibuprofen", gel.name(), 2025, 5, "Painkiller"
-            );
+            DrugRequestDTO dto = new DrugRequestDTO("Ibuprofen", gel.name(), 2025, 5, "Painkiller");
 
             DrugFormEntity form = DrugFormEntity.builder().id(1).name(DrugFormDTO.GEL.name()).build();
             when(drugFormService.resolve(gel)).thenReturn(form);
@@ -150,7 +146,7 @@ class DrugServiceTest {
 
         @Test
         @DisplayName("Should throw exception when deleting a non-existing drug")
-        void shouldThrowWhenNotFound() {
+        void shouldThrowWhenDeletingNonExistingDrug(){
             // given
             when(drugRepository.findById(999)).thenReturn(Optional.empty());
 
@@ -174,24 +170,12 @@ class DrugServiceTest {
             existing.setDrugId(id);
             existing.setDrugName("Old Name");
 
-            DrugRequestDTO updateDTO = new DrugRequestDTO(
-                    "New Name",
-                    "PILLS",
-                    2026,
-                    1,
-                    "Updated Description"
-            );
+            DrugRequestDTO updateDTO = new DrugRequestDTO("New Name", "PILLS", 2026, 1, "Updated Description");
 
             DrugFormDTO drugFormDTO = DrugFormDTO.PILLS;
             DrugEntity resolvedForm = DrugEntity.builder().drugId(1).build();
 
-            DrugDTO expectedDTO = DrugDTO.builder()
-                    .drugId(id)
-                    .drugName("New Name")
-                    .drugForm(drugFormDTO)
-                    .expirationDate(DateUtils.buildExpirationDate(2026, 1))
-                    .drugDescription("Updated Description")
-                    .build();
+            DrugDTO expectedDTO = DrugDTO.builder().drugId(id).drugName("New Name").drugForm(drugFormDTO).expirationDate(DateUtils.buildExpirationDate(2026, 1)).drugDescription("Updated Description").build();
 
             when(drugRepository.findById(id)).thenReturn(Optional.of(existing));
             when(drugFormService.resolve(DrugFormDTO.PILLS)).thenReturn(resolvedForm.getDrugForm());
@@ -204,6 +188,15 @@ class DrugServiceTest {
             // then
             assertThat(result).isEqualTo(expectedDTO);
             verify(drugRepository).save(any());
+        }
+
+        @Test
+        @DisplayName("Should throw exception when drug to update is not found")
+        void updateDrug_shouldThrow_whenDrugNotFound() {
+            when(drugRepository.findById(123)).thenReturn(Optional.empty());
+
+            assertThrows(DrugNotFoundException.class, () -> drugService.updateDrug(123, new DrugRequestDTO()));
+            verify(drugRepository).findById(123);
         }
     }
 
@@ -218,12 +211,7 @@ class DrugServiceTest {
             when(drugRepository.count()).thenReturn(10L);
             when(drugRepository.countByExpirationDateBefore(any())).thenReturn(4L);
             when(drugRepository.countByAlertSentTrue()).thenReturn(2L);
-            when(drugRepository.countGroupedByForm()).thenReturn(
-                    List.of(
-                            new Object[]{"PILLS", 5L},
-                            new Object[]{"SYRUP", 3L}
-                    )
-            );
+            when(drugRepository.countGroupedByForm()).thenReturn(List.of(new Object[]{"PILLS", 5L}, new Object[]{"SYRUP", 3L}));
 
             // when
             DrugStatisticsDTO result = drugService.getDrugStatistics();
@@ -233,9 +221,32 @@ class DrugServiceTest {
             assertThat(result.getExpiredDrugs()).isEqualTo(4L);
             assertThat(result.getActiveDrugs()).isEqualTo(6L);
             assertThat(result.getAlertSentCount()).isEqualTo(2L);
-            assertThat(result.getDrugsByForm()).containsExactlyInAnyOrderEntriesOf(
-                    Map.of("PILLS", 5L, "SYRUP", 3L)
-            );
+            assertThat(result.getDrugsByForm()).containsExactlyInAnyOrderEntriesOf(Map.of("PILLS", 5L, "SYRUP", 3L));
+        }
+        @Test
+        void shouldIgnoreNullValuesInGroupedStats() {
+            // given
+            Object[] valid = new Object[]{"PILLS", 5L};
+            Object[] nullValue = new Object[]{"SYRUP", null}; // arr[1] == null
+            Object[] nullKey = new Object[]{null, 10L};       // arr[0] == null
+
+            when(drugRepository.count()).thenReturn(15L);
+            when(drugRepository.countByExpirationDateBefore(any())).thenReturn(3L);
+            when(drugRepository.countByAlertSentTrue()).thenReturn(2L);
+            when(drugRepository.countGroupedByForm()).thenReturn(List.of(valid, nullValue, nullKey));
+
+            // when
+            DrugStatisticsDTO result = drugService.getDrugStatistics();
+
+            // then
+            assertThat(result.getDrugsByForm())
+                    .containsOnly(Map.entry("PILLS", 5L))
+                    .doesNotContainKey(null)
+                    .doesNotContainValue(null);
+
+            assertThat(result.getTotalDrugs()).isEqualTo(15);
+            assertThat(result.getExpiredDrugs()).isEqualTo(3);
+            assertThat(result.getAlertSentCount()).isEqualTo(2);
         }
     }
 
@@ -260,9 +271,20 @@ class DrugServiceTest {
             List<DrugDTO> result = drugService.getAllSorted("expirationDate", SortDirectionDTO.ASC);
 
             // then
-            assertThat(result)
-                    .extracting(DrugDTO::getDrugName)
-                    .containsExactly("Ibuprofen", "Aspirin");
+            assertThat(result).extracting(DrugDTO::getDrugName).containsExactly("Ibuprofen", "Aspirin");
+        }
+
+        @Test
+        void getAllSorted_shouldDefaultToASC_whenDirectionIsNull() {
+            // when
+            drugService.getAllSorted("expirationDate", null);
+
+            // then
+            ArgumentCaptor<Sort> sortCaptor = ArgumentCaptor.forClass(Sort.class);
+            verify(drugRepository).findAll(sortCaptor.capture());
+            Sort capturedSort = sortCaptor.getValue();
+            assertNotNull(capturedSort.getOrderFor("expirationDate"));
+            assertThat(Objects.requireNonNull(capturedSort.getOrderFor("expirationDate")).getDirection()).isEqualTo(Sort.Direction.ASC);
         }
     }
 
@@ -272,35 +294,30 @@ class DrugServiceTest {
 
         @Test
         @DisplayName("Should return drugs matching description")
-        void shouldReturnMatchingDrugs() {
+        void searchByDescription_shouldReturnMatchingDrugs() {
             // given
             DrugEntity entity = new DrugEntity();
             entity.setDrugName("Nurofen");
             entity.setDrugDescription("Painkiller");
 
-            when(drugRepository.findByDrugDescriptionIgnoreCaseContaining("pain"))
-                    .thenReturn(List.of(entity));
-            when(drugMapper.mapToDTO(entity)).thenReturn(
-                    DrugDTO.builder().drugName("Nurofen").drugDescription("Painkiller").build());
+            when(drugRepository.findByDrugDescriptionIgnoreCaseContaining("pain")).thenReturn(List.of(entity));
+            when(drugMapper.mapToDTO(entity)).thenReturn(DrugDTO.builder().drugName("Nurofen").drugDescription("Painkiller").build());
 
             // when
             List<DrugDTO> result = drugService.searchByDescription("pain");
 
             // then
-            assertThat(result)
-                    .hasSize(1)
-                    .first()
-                    .satisfies(dto -> {
-                        assertThat(dto.getDrugName()).isEqualTo("Nurofen");
-                        assertThat(dto.getDrugDescription()).isEqualTo("Painkiller");
-                    });
+            assertThat(result).hasSize(1).first().satisfies(dto -> {
+                assertThat(dto.getDrugName()).isEqualTo("Nurofen");
+                assertThat(dto.getDrugDescription()).isEqualTo("Painkiller");
+            });
             verify(drugRepository).findByDrugDescriptionIgnoreCaseContaining("pain");
         }
     }
 
     @Nested
     @DisplayName("sendExpiryAlertEmails")
-    class SendExpiryAlertEmailsTest {
+    class ExpiryAlertTests {
 
         @Test
         @DisplayName("Should send email alerts and mark drug as notified")
@@ -308,15 +325,9 @@ class DrugServiceTest {
             // given
 
             OffsetDateTime end = DateUtils.buildExpirationDate(2025, 8);
-            DrugEntity drug = DrugEntity.builder()
-                    .drugId(1)
-                    .drugName("Old Drug")
-                    .expirationDate(end)
-                    .alertSent(false)
-                    .build();
+            DrugEntity drug = DrugEntity.builder().drugId(1).drugName("Old Drug").expirationDate(end).alertSent(false).build();
 
-            when(drugRepository.findByExpirationDateLessThanEqualAndAlertSentFalse(end))
-                    .thenReturn(List.of(drug));
+            when(drugRepository.findByExpirationDateLessThanEqualAndAlertSentFalse(end)).thenReturn(List.of(drug));
             when(drugRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
             // when
@@ -336,41 +347,16 @@ class DrugServiceTest {
         void shouldThrowEmailSendingException_whenEmailFails() {
             // given
             OffsetDateTime end = DateUtils.buildExpirationDate(2025, 5);
-            DrugEntity drug = DrugEntity.builder()
-                    .drugId(1)
-                    .expirationDate(end)
-                    .alertSent(false)
-                    .build();
+            DrugEntity drug = DrugEntity.builder().drugId(1).expirationDate(end).alertSent(false).build();
 
-            when(drugRepository.findByExpirationDateLessThanEqualAndAlertSentFalse(end))
-                    .thenReturn(List.of(drug));
+            when(drugRepository.findByExpirationDateLessThanEqualAndAlertSentFalse(end)).thenReturn(List.of(drug));
             doThrow(new RuntimeException("Email failed")).when(mailService).sendEmail(any(), any(), any());
 
             // when / then
-            assertThrows(RuntimeException.class, () -> drugService.sendExpiryAlertEmails(2025, 5));
+            assertThrows(EmailSendingException.class, () -> drugService.sendExpiryAlertEmails(2025, 5));
             verify(drugRepository, never()).save(any());
-        }
-
-        @Test
-        @DisplayName("Should do nothing when no expiring drugs to notify")
-        void shouldSkipDrug_whenAlreadyNotified() {
-            // given
-            OffsetDateTime end = DateUtils.buildExpirationDate(2025, 5);
-
-            when(drugRepository.findByExpirationDateLessThanEqualAndAlertSentFalse(end))
-                    .thenReturn(List.of());
-
-            // when
-            drugService.sendExpiryAlertEmails(2025, 5);
-
-            // then
-            ArgumentCaptor<OffsetDateTime> timeCaptor = ArgumentCaptor.forClass(OffsetDateTime.class);
-            verify(drugRepository).findByExpirationDateLessThanEqualAndAlertSentFalse(timeCaptor.capture());
-            OffsetDateTime date = timeCaptor.getValue();
-            assertThat(date).isNotNull();
-            assertThat(date).isEqualTo(end);
-            verify(mailService, never()).sendEmail(any(), any(), any());
-            verify(drugRepository, never()).save(any());
+            EmailSendingException ex = assertThrows(EmailSendingException.class, () -> drugService.sendExpiryAlertEmails(2025, 5));
+            assertThat(ex.getMessage()).contains("Could not send email alert for drug");
         }
 
         @Test
@@ -378,27 +364,65 @@ class DrugServiceTest {
         void sendExpiryAlertEmails_shouldThrowException_whenEmailFails() {
             // given
             OffsetDateTime date = DateUtils.buildExpirationDate(2025, 8);
-            DrugEntity drug = DrugEntity.builder()
-                    .drugId(1)
-                    .drugName("Apap")
-                    .expirationDate(date)
-                    .drugDescription("Ból głowy")
-                    .alertSent(false)
-                    .build();
+            DrugEntity drug = DrugEntity.builder().drugId(1).drugName("Apap").expirationDate(date).drugDescription("Ból głowy").alertSent(false).build();
 
-            when(drugRepository.findByExpirationDateLessThanEqualAndAlertSentFalse(date))
-                    .thenReturn(List.of(drug));
-            doThrow(new RuntimeException("SMTP error"))
-                    .when(mailService).sendEmail(any(), any(), any());
+            when(drugRepository.findByExpirationDateLessThanEqualAndAlertSentFalse(date)).thenReturn(List.of(drug));
+            doThrow(new RuntimeException("SMTP error")).when(mailService).sendEmail(any(), any(), any());
 
             // when / then
-            assertThatThrownBy(() -> drugService.sendExpiryAlertEmails(2025, 8))
-                    .isInstanceOf(EmailSendingException.class)
-                    .hasMessageContaining("Could not send email alert for drug");
+            assertThatThrownBy(() -> drugService.sendExpiryAlertEmails(2025, 8)).isInstanceOf(EmailSendingException.class).hasMessageContaining("Could not send email alert for drug");
 
             verify(mailService).sendEmail(any(), any(), any());
             verify(drugRepository, never()).save(any());
         }
+
+        @Test
+        void sendExpiryAlertEmails_shouldProcessMultipleDrugs() {
+            OffsetDateTime date = DateUtils.buildExpirationDate(2026, 1);
+            DrugEntity drug1 = DrugEntity.builder().drugId(1).drugName("Apap").expirationDate(date).drugDescription("pain relief").alertSent(false).build();
+
+            DrugEntity drug2 = DrugEntity.builder().drugId(2).drugName("Ibuprofen").expirationDate(date).drugDescription("headache").alertSent(false).build();
+
+            List<DrugEntity> drugs = List.of(drug1, drug2);
+            when(drugRepository.findByExpirationDateLessThanEqualAndAlertSentFalse(date)).thenReturn(drugs);
+
+            drugService.sendExpiryAlertEmails(2026, 1);
+
+            verify(mailService, times(2)).sendEmail(any(), any(), any());
+            verify(drugRepository, times(2)).save(any());
+        }
+
+        @Test
+        void sendExpiryAlertEmails_shouldDoNothing_whenNoDrugsToProcess() {
+            OffsetDateTime date = DateUtils.buildExpirationDate(2025, 8);
+            when(drugRepository.findByExpirationDateLessThanEqualAndAlertSentFalse(date)).thenReturn(List.of());
+
+            drugService.sendExpiryAlertEmails(2025, 8);
+
+            verify(drugRepository, never()).save(any());
+            verify(mailService, never()).sendEmail(any(), any(), any());
+        }
+
+        @Test
+        void sendExpiryAlertEmails_shouldSkipDrugsWithAlertAlreadySent() {
+            OffsetDateTime date = DateUtils.buildExpirationDate(2025, 8);
+            DrugEntity alreadyAlerted = DrugEntity.builder()
+                    .drugId(1)
+                    .drugName("Ibuprofen")
+                    .expirationDate(date)
+                    .drugDescription("pain")
+                    .alertSent(true)
+                    .build();
+            when(drugRepository.findByExpirationDateLessThanEqualAndAlertSentFalse(date))
+                    .thenReturn(List.of(alreadyAlerted));
+
+            drugService.sendExpiryAlertEmails(2025, 8);
+
+            verify(drugRepository, never()).save(any());
+            verify(mailService, never()).sendEmail(any(), any(), any());
+        }
+
+
     }
 
     @Nested
@@ -407,7 +431,7 @@ class DrugServiceTest {
 
         @Test
         @DisplayName("Should return drugs matching name (case-insensitive)")
-        void shouldReturnMatchingDrugs() {
+        void getDrugsByName_shouldReturnMatchingDrugs() {
             // given
             DrugEntity entity = new DrugEntity();
             entity.setDrugName("Paracetamol");
@@ -423,10 +447,7 @@ class DrugServiceTest {
             String value = captor.getValue();
             assertThat(value).isNotNull();
             assertThat(value).isEqualTo("Parace");
-            assertThat(result)
-                    .hasSize(1)
-                    .first()
-                    .satisfies(dto -> assertThat(dto.getDrugName()).isEqualTo("Paracetamol"));
+            assertThat(result).hasSize(1).first().satisfies(dto -> assertThat(dto.getDrugName()).isEqualTo("Paracetamol"));
         }
 
         @Test
@@ -457,13 +478,10 @@ class DrugServiceTest {
             int year = OffsetDateTime.now().getYear();
             int month = OffsetDateTime.now().getMonthValue();
             OffsetDateTime dateTime = DateUtils.buildExpirationDate(year, month);
-            DrugEntity drug1 = DrugEntity.builder().drugId(1).drugName("Altacet").expirationDate(dateTime)
-                    .build();
-            DrugEntity drug2 = DrugEntity.builder().drugId(2).drugName("Naproxen").expirationDate(dateTime)
-                    .build();
+            DrugEntity drug1 = DrugEntity.builder().drugId(1).drugName("Altacet").expirationDate(dateTime).build();
+            DrugEntity drug2 = DrugEntity.builder().drugId(2).drugName("Naproxen").expirationDate(dateTime).build();
 
-            when(drugRepository.findByExpirationDateLessThanEqualOrderByExpirationDateAsc(dateTime))
-                    .thenReturn(List.of(drug1, drug2));
+            when(drugRepository.findByExpirationDateLessThanEqualOrderByExpirationDateAsc(dateTime)).thenReturn(List.of(drug1, drug2));
             when(drugMapper.mapToDTO(drug1)).thenReturn(DrugDTO.builder().drugName("Altacet").build());
             when(drugMapper.mapToDTO(drug2)).thenReturn(DrugDTO.builder().drugName("Naproxen").build());
 
@@ -493,10 +511,8 @@ class DrugServiceTest {
         @DisplayName("Should return drugs that are expired")
         void getExpiredDrugs_shouldReturnDrugsBeforeNow() {
             OffsetDateTime pastDate = OffsetDateTime.now().minusMonths(2);
-            DrugEntity drug1 = DrugEntity.builder().drugId(1).drugName("Altacet").expirationDate(pastDate)
-                    .build();
-            DrugEntity drug2 = DrugEntity.builder().drugId(2).drugName("Naproxen").expirationDate(pastDate)
-                    .build();
+            DrugEntity drug1 = DrugEntity.builder().drugId(1).drugName("Altacet").expirationDate(pastDate).build();
+            DrugEntity drug2 = DrugEntity.builder().drugId(2).drugName("Naproxen").expirationDate(pastDate).build();
 
             when(drugRepository.findAll()).thenReturn(List.of(drug1, drug2));
             when(drugMapper.mapToDTO(drug1)).thenReturn(DrugDTO.builder().drugName("Altacet").expirationDate(pastDate).build());
@@ -512,6 +528,58 @@ class DrugServiceTest {
             assertThat(expiredDrugs.get(1).getDrugName()).isEqualTo("Naproxen");
             verify(drugRepository).findAll();
             verify(drugMapper, times(2)).mapToDTO(any(DrugEntity.class));
+        }
+
+        @Test
+        @DisplayName("Should ignore future drugs")
+        void getExpiredDrugs_shouldIgnoreFutureDrugs() {
+            // given
+            DrugEntity expired = DrugEntity.builder().expirationDate(OffsetDateTime.now().minusDays(1)).build();
+            DrugEntity future = DrugEntity.builder().expirationDate(OffsetDateTime.now().plusDays(10)).build();
+
+            when(drugRepository.findAll()).thenReturn(List.of(expired, future));
+            when(drugMapper.mapToDTO(expired)).thenReturn(DrugDTO.builder().expirationDate(OffsetDateTime.now().minusDays(1)).build());
+
+            // when
+            List<DrugDTO> result = drugService.getExpiredDrugs();
+
+            // then
+            assertThat(result).hasSize(1);
+        }
+        @Test
+        @DisplayName("Should do nothing when no expired drugs found")
+        void getExpiredDrugs_shouldDoNothing_whenNoExpiredDrugsFound() {
+            // given
+            OffsetDateTime futureDateTime = OffsetDateTime.now().plusDays(10);
+            DrugEntity future = DrugEntity.builder().expirationDate(futureDateTime).build();
+
+            when(drugRepository.findAll()).thenReturn(List.of(future));
+
+            // when
+            List<DrugDTO> result = drugService.getExpiredDrugs();
+
+            // then
+            assertThat(result).hasSize(0);
+            verify(drugRepository).findAll();
+            verify(drugMapper, never()).mapToDTO(any(DrugEntity.class));
+        }
+
+        @Test
+        @DisplayName("Should do nothing when no expired drugs found")
+        void getExpiredDrugs_shouldDoNothing_whenExpiredTimeIsNull() {
+            // given
+            DrugEntity.builder().drugName("DrugWithNullExpiration").expirationDate(null).build();
+            DrugEntity future = DrugEntity.builder().expirationDate(null).build();
+
+            when(drugRepository.findAll()).thenReturn(List.of(future));
+
+            // when
+            List<DrugDTO> result = drugService.getExpiredDrugs();
+
+            // then
+            assertThat(result).hasSize(0);
+            verify(drugRepository).findAll();
+            verify(drugMapper, never()).mapToDTO(any(DrugEntity.class));
         }
     }
 
@@ -529,10 +597,8 @@ class DrugServiceTest {
             drug2.setDrugId(2);
             drug2.setDrugName("Ibuprofen");
             when(drugRepository.findAll()).thenReturn(List.of(drug1, drug2));
-            when(drugMapper.mapToSimpleDTO(drug1))
-                    .thenReturn(DrugSimpleDTO.builder().drugId(1).drugName("Aspirin").build());
-            when(drugMapper.mapToSimpleDTO(drug2))
-                    .thenReturn(DrugSimpleDTO.builder().drugId(2).drugName("Ibuprofen").build());
+            when(drugMapper.mapToSimpleDTO(drug1)).thenReturn(DrugSimpleDTO.builder().drugId(1).drugName("Aspirin").build());
+            when(drugMapper.mapToSimpleDTO(drug2)).thenReturn(DrugSimpleDTO.builder().drugId(2).drugName("Ibuprofen").build());
 
             // when
             List<DrugSimpleDTO> result = drugService.getAllDrugsSimple();
@@ -557,16 +623,8 @@ class DrugServiceTest {
             // given
             Pageable pageable = PageRequest.of(0, 2);
 
-            DrugEntity drug1 = DrugEntity.builder()
-                    .drugId(1)
-                    .drugName("Altacet")
-                    .expirationDate(OffsetDateTime.now())
-                    .build();
-            DrugEntity drug2 = DrugEntity.builder()
-                    .drugId(2)
-                    .drugName("Ibuprom")
-                    .expirationDate(OffsetDateTime.now())
-                    .build();
+            DrugEntity drug1 = DrugEntity.builder().drugId(1).drugName("Altacet").expirationDate(OffsetDateTime.now()).build();
+            DrugEntity drug2 = DrugEntity.builder().drugId(2).drugName("Ibuprom").expirationDate(OffsetDateTime.now()).build();
 
             List<DrugEntity> drugEntities = List.of(drug1, drug2);
             Page<DrugEntity> pageResult = new PageImpl<>(drugEntities, pageable, 2);
@@ -629,8 +687,8 @@ class DrugServiceTest {
 
             // when + then
             assertThatThrownBy(() -> drugService.getDrugsByForm(invalidForm))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("Invalid drug form: " + invalidForm);
+                    .isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Invalid drug form: "
+                            + invalidForm);
         }
     }
 
@@ -642,15 +700,9 @@ class DrugServiceTest {
         @DisplayName("Should return all drugs")
         void getAllDrugs_shouldReturnAllDrugs() {
 
-            DrugEntity drug1 = DrugEntity.builder()
-                    .drugId(1)
-                    .drugName("Aspirin")
-                    .build();
+            DrugEntity drug1 = DrugEntity.builder().drugId(1).drugName("Aspirin").build();
 
-            DrugEntity drug2 = DrugEntity.builder()
-                    .drugId(2)
-                    .drugName("Ibuprofen")
-                    .build();
+            DrugEntity drug2 = DrugEntity.builder().drugId(2).drugName("Ibuprofen").build();
 
             when(drugRepository.findAll()).thenReturn(List.of(drug1, drug2));
             when(drugMapper.mapToDTO(drug1)).thenReturn(DrugDTO.builder().drugId(1).drugName("Aspirin").build());
@@ -681,9 +733,51 @@ class DrugServiceTest {
             String invalidField = "unknownField";
 
             // when / then
-            assertThatThrownBy(() -> drugService.getAllSorted(invalidField, SortDirectionDTO.ASC))
-                    .isInstanceOf(InvalidSortFieldException.class)
-                    .hasMessageContaining(invalidField);
+            assertThatThrownBy(() -> drugService.getAllSorted(invalidField, SortDirectionDTO.ASC)).isInstanceOf(InvalidSortFieldException.class).hasMessageContaining(invalidField);
+        }
+
+        @Test
+        @DisplayName("Should resolve valid sort field")
+        void getAllSorted_shouldUseCorrectSortField_forForm() {
+            // when
+            drugService.getAllSorted("form", SortDirectionDTO.ASC);
+
+            // then
+            ArgumentCaptor<Sort> sortCaptor = ArgumentCaptor.forClass(Sort.class);
+            verify(drugRepository).findAll(sortCaptor.capture());
+
+            Sort sort = sortCaptor.getValue();
+            assertThat(sort.getOrderFor("drugForm.name")).isNotNull();
+        }
+
+        @Test
+        @DisplayName("Should resolve valid sort field for id")
+        void getAllSorted_shouldUseCorrectSortField_forId() {
+            // when
+            drugService.getAllSorted("id", SortDirectionDTO.ASC);
+
+            // then
+            ArgumentCaptor<Sort> sortCaptor = ArgumentCaptor.forClass(Sort.class);
+            verify(drugRepository).findAll(sortCaptor.capture());
+
+            Sort sort = sortCaptor.getValue();
+            assertThat(sort.getOrderFor("drugId")).isNotNull();
+        }
+
+        @Test
+        @DisplayName("Should resolve valid sort field for description")
+        void getAllSorted_shouldUseCorrectSortField_forDescription() {
+            // when
+            drugService.getAllSorted("description", SortDirectionDTO.DESC);
+
+            // then
+            ArgumentCaptor<Sort> sortCaptor = ArgumentCaptor.forClass(Sort.class);
+            verify(drugRepository).findAll(sortCaptor.capture());
+
+            Sort sort = sortCaptor.getValue();
+            assertThat(sort.getOrderFor("drugDescription")).isNotNull();
+            assertThat(Objects.requireNonNull(sort.getOrderFor("drugDescription")).getDirection())
+                    .isEqualTo(Sort.Direction.DESC);
         }
     }
 }

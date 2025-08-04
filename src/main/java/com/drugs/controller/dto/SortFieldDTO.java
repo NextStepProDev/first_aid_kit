@@ -6,6 +6,7 @@ import java.util.Arrays;
 
 @Getter
 public enum SortFieldDTO {
+    ID("id"),
     NAME("name"),
     FORM("form"),
     EXPIRATION_DATE("expirationDate"),

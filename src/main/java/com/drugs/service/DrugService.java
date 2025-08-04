@@ -18,7 +18,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.time.OffsetDateTime;
 import java.util.Arrays;
@@ -108,14 +107,8 @@ public class DrugService {
     public DrugDTO updateDrug(Integer id, DrugRequestDTO dto) {
         log.info("Attempting to update drug with ID: {}", id);
         DrugEntity entity;
-        try {
             entity = drugRepository.findById(id)
                     .orElseThrow(() -> new DrugNotFoundException("Drug not found with ID: " + id));
-
-        } catch (ResponseStatusException e) {
-            log.error("Drug not found with ID: {}", id);
-            throw e;
-        }
         entity.setDrugName(dto.getName());
         entity.setDrugForm(drugFormService.resolve(DrugFormDTO.valueOf(dto.getForm())));
         entity.setExpirationDate(DateUtils.buildExpirationDate(dto.getExpirationYear(), dto.getExpirationMonth()));
@@ -394,7 +387,7 @@ public class DrugService {
             case "name" -> "drugName";
             case "expirationDate" -> "expirationDate";
             case "form" -> "drugForm.name";
-            case "drugDescription" -> "drugDescription";
+            case "description" -> "drugDescription";
             default -> throw new InvalidSortFieldException(sortBy);
         };
     }
