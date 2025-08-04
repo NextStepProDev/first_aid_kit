@@ -374,10 +374,14 @@ public class DrugService {
      * @param sortBy the field to sort by
      * @return a list of sorted drug data transfer objects
      */
-    public List<DrugDTO> getAllSorted(String sortBy) {
-        // TODO: Implement descending sort option
+    public List<DrugDTO> getAllSorted(String sortBy, SortDirectionDTO direction) {
+        log.info("Fetching all drugs sorted by {} in {} order", sortBy, direction);
         String field = resolveSortField(sortBy);
-        Sort sort = Sort.by(field).ascending();
+
+        Sort sort = direction == SortDirectionDTO.DESC
+                ? Sort.by(field).descending()
+                : Sort.by(field).ascending();
+
         return drugRepository.findAll(sort).stream()
                 .map(drugMapper::mapToDTO)
                 .toList();

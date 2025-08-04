@@ -11,7 +11,6 @@ import com.drugs.infrastructure.email.EmailService;
 import com.drugs.infrastructure.util.DateUtils;
 import com.drugs.service.DrugFormService;
 import com.drugs.service.DrugService;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -49,11 +48,6 @@ class DrugServiceTest {
 
     @InjectMocks
     private DrugService drugService;
-
-    @BeforeEach
-    void setUp() {
-        reset(mailService, drugRepository);
-    }
 
     @Nested
     @DisplayName("getDrugById")
@@ -263,7 +257,7 @@ class DrugServiceTest {
             when(drugMapper.mapToDTO(drug1)).thenReturn(DrugDTO.builder().drugName("Aspirin").build());
 
             // when
-            List<DrugDTO> result = drugService.getAllSorted("expirationDate");
+            List<DrugDTO> result = drugService.getAllSorted("expirationDate", SortDirectionDTO.ASC);
 
             // then
             assertThat(result)
@@ -687,7 +681,7 @@ class DrugServiceTest {
             String invalidField = "unknownField";
 
             // when / then
-            assertThatThrownBy(() -> drugService.getAllSorted(invalidField))
+            assertThatThrownBy(() -> drugService.getAllSorted(invalidField, SortDirectionDTO.ASC))
                     .isInstanceOf(InvalidSortFieldException.class)
                     .hasMessageContaining(invalidField);
         }

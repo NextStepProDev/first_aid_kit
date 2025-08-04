@@ -2,6 +2,7 @@ package com.drugs.integration;
 
 import com.drugs.config.NoSecurityConfig;
 import com.drugs.controller.DrugController;
+import com.drugs.controller.dto.SortDirectionDTO;
 import com.drugs.controller.exception.DrugNotFoundException;
 import com.drugs.controller.exception.GlobalExceptionHandler;
 import com.drugs.controller.exception.InvalidSortFieldException;
@@ -21,6 +22,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.OffsetDateTime;
 import java.util.Map;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -156,14 +158,16 @@ class GlobalExceptionIntegrationTest {
         void shouldReturn400ForInvalidRequestParam() throws Exception {
             // given
             String invalidField = "unknownField";
-            given(drugService.getAllSorted(invalidField))
+            given(drugService.getAllSorted(invalidField, SortDirectionDTO.ASC))
                     .willThrow(new InvalidSortFieldException(invalidField));
 
             // when & then
             mockMvc.perform(get("/api/drugs/sorted")
-                            .param("sortBy", "unknownField"))
+                            .param("sortBy", "unknownField")
+                            .param("direction", "asc"))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.message").value("Unknown sort field: unknownField"));
+                    .andExpect(jsonPath("$.message")
+                            .value("Invalid value for parameter 'sortBy': " + invalidField));
         }
 
         @Test
@@ -180,14 +184,15 @@ class GlobalExceptionIntegrationTest {
         @Test
         void shouldReturn400WhenSortByParamIsEmpty() throws Exception {
             // given
-            given(drugService.getAllSorted(anyString()))
+            given(drugService.getAllSorted(anyString(), any()))
                     .willThrow(new InvalidSortFieldException(""));
 
             // when & then
             mockMvc.perform(get("/api/drugs/sorted")
-                            .param("sortBy", ""))
+                            .param("sortBy", "")
+                            .param("direction", "asc"))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.message").value("Unknown sort field: "));
+                    .andExpect(jsonPath("$.message").value("Invalid value for parameter 'sortBy': "));
         }
 
         @Test

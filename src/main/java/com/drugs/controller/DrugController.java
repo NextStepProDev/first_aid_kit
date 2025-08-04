@@ -4,6 +4,8 @@ import com.drugs.controller.dto.*;
 import com.drugs.infrastructure.pdf.PdfExportService;
 import com.drugs.service.DrugService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -83,9 +85,10 @@ public class DrugController {
     @GetMapping("/forms")
     @Operation(summary = "Get drug forms", description = "Returns a list of all available drug forms (enum values)")
     @SuppressWarnings("unused")
-    public List<String> getAvailableDrugForms() {
-        log.info("Fetching available drug forms");
-        return Arrays.stream(DrugFormDTO.values()).map(Enum::name).toList();
+    public List<FormOption> getAvailableDrugForms() {
+        return Arrays.stream(DrugFormDTO.values())
+                .map(f -> new FormOption(f.name().toLowerCase(), f.getLabel()))
+                .toList();
     }
 
     @GetMapping("/forms/dictionary")
@@ -112,7 +115,7 @@ public class DrugController {
             "specified year and month")
     @SuppressWarnings("unused")
     public ResponseEntity<List<DrugDTO>> getDrugsExpiringUntil(
-            @RequestParam @Min(1900) @Max(2100) int year,
+            @RequestParam @Min(2024) @Max(2100) int year,
             @RequestParam @Min(1) @Max(12) int month
     ) {
         log.info("Fetching drugs expiring until {}-{}", year, month);
@@ -136,6 +139,7 @@ public class DrugController {
         return drugService.getAllDrugsSimple();
 
     }
+
     @GetMapping("/paged")
     @Operation(summary = "Get drugs from pages", description = "Returns a list of drugs in the pages")
     @SuppressWarnings("unused")
@@ -147,9 +151,18 @@ public class DrugController {
     @GetMapping("/by-form")
     @Operation(summary = "Get drugs by form", description = "Returns a list of drugs matching the given form")
     @SuppressWarnings("unused")
-    public ResponseEntity<List<DrugDTO>> getDrugsByForm(@RequestParam String form) {
-        log.info("Fetching drugs by form: {}", form);
-        return ResponseEntity.ok(drugService.getDrugsByForm(form));
+    public ResponseEntity<List<DrugDTO>> getDrugsByForm(
+            @RequestParam
+            @Parameter(
+                    description = "Drug form (one of: gel, pills, syrup, drops, suppositories, sachets, cream, spray, " +
+                            "ointment, liquid, powder, injection, bandage, inhaler, patch, solution, other)",
+                    example = "pills"
+            )
+            String form
+    ) {
+        DrugFormDTO formEnum = DrugFormDTO.fromString(form);
+        log.info("Fetching drugs by form: {}", formEnum);
+        return ResponseEntity.ok(drugService.getDrugsByForm(formEnum.name()));
     }
 
     @GetMapping("/by-description")
@@ -192,12 +205,30 @@ public class DrugController {
     @GetMapping("/sorted")
     @Operation(
             summary = "Get sorted drugs",
-            description = "Returns a list of drugs sorted by the specified field. " +
-                    "Example values: 'name', 'expirationDate', 'form', 'description'"
+            description = "Returns a list of drugs sorted by one of the enum fields: name, expirationDate, form, " +
+                    "description in the given direction: asc or desc."
     )
     @SuppressWarnings("unused")
-    public List<DrugDTO> getAllSorted(@RequestParam(defaultValue = "name") String sortBy) {
-        log.info("Fetching drugs sorted by: {}", sortBy);
-        return drugService.getAllSorted(sortBy);
+    public List<DrugDTO> getAllSorted(
+            @RequestParam
+            @Parameter(
+                    description = "Field to sort by",
+                    example = "name",
+                    schema = @Schema(allowableValues = {"name", "form", "expirationDate", "description"})
+            )
+            String sortBy,
+
+            @RequestParam
+            @Parameter(
+                    description = "Sort direction",
+                    example = "asc",
+                    schema = @Schema(allowableValues = {"asc", "desc"})
+            )
+            String direction
+    ) {
+        log.info("Fetching all drugs sorted by {} in {} order", sortBy, direction);
+        SortFieldDTO field = SortFieldDTO.fromString(sortBy);
+        SortDirectionDTO dir = SortDirectionDTO.fromString(direction);
+        return drugService.getAllSorted(field.getFieldName(), dir);
     }
 }

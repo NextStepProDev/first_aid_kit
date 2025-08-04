@@ -2,6 +2,8 @@ package com.drugs.controller.dto;
 
 import lombok.Getter;
 
+import java.util.Arrays;
+
 @Getter
 public enum DrugFormDTO {
     GEL("Żel"),
@@ -26,5 +28,13 @@ public enum DrugFormDTO {
 
     DrugFormDTO(String label) {
         this.label = label;
+    }
+
+    public static DrugFormDTO fromString(String value) {
+        return Arrays.stream(values())
+                .filter(f -> f.name().equalsIgnoreCase(value))
+                .findFirst()
+                .orElseThrow(() ->
+                        new IllegalArgumentException("Invalid value for parameter 'sortBy': " + value));
     }
 }

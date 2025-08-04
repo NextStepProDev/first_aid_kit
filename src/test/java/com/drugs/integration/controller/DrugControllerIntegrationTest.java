@@ -492,7 +492,7 @@ class DrugControllerIntegrationTest extends AbstractIntegrationTest {
 
                 // when
                 ResponseEntity<List<DrugDTO>> response = restTemplate.exchange(
-                        getUrl("/api/drugs/sorted?sortBy=name"),
+                        getUrl("/api/drugs/sorted?sortBy=name&direction=ASC"),
                         HttpMethod.GET,
                         null,
                         new ParameterizedTypeReference<>() {
@@ -545,20 +545,20 @@ class DrugControllerIntegrationTest extends AbstractIntegrationTest {
             @DisplayName("should return all available drug forms")
             void shouldReturnAvailableDrugForms() {
                 // when
-                ResponseEntity<List<String>> response = restTemplate.exchange(
+                ResponseEntity<List<FormOption>> response = restTemplate.exchange(
                         getUrl("/api/drugs/forms"),
                         HttpMethod.GET,
                         null,
-                        new ParameterizedTypeReference<>() {
-                        }
+                        new ParameterizedTypeReference<>() {}
                 );
 
                 // then
                 assertThat(response.getStatusCode()).isEqualTo(HttpStatus.OK);
-                List<String> forms = response.getBody();
+                List<FormOption> forms = response.getBody();
                 assertThat(forms).isNotNull();
-                assertThat(forms).contains("PILLS", "GEL", "DROPS", "SYRUP", "OTHER");
-                assertThat(forms.size()).isEqualTo(Arrays.stream(DrugFormDTO.values()).toList().size());
+                assertThat(forms).extracting(FormOption::value)
+                        .contains("pills", "gel", "drops", "syrup", "other");
+                assertThat(forms.size()).isEqualTo(DrugFormDTO.values().length);
             }
         }
 
