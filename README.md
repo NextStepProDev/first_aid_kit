@@ -331,6 +331,16 @@ Response example:
 ]
 ```
 
+
+## 📦 Versioning
+
+This project uses [semantic versioning](https://semver.org/) — format: `MAJOR.MINOR.PATCH`.
+
+- Current version: **`0.1.0-SNAPSHOT`**
+- Latest stable release: [**`v0.1.0`**](https://github.com/NextStepProDev/first_aid_kit/releases/tag/v0.1.0)
+
+You can browse release history [here](https://github.com/NextStepProDev/first_aid_kit/releases).
+
 ### License
 
 This project is licensed under the MIT License – see the [LICENSE](LICENSE) file for details.

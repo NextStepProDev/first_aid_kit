@@ -1,6 +1,7 @@
 package com.firstaid.controller.exception;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.mapping.PropertyReferenceException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -82,6 +83,14 @@ public class GlobalExceptionHandler {
                 .body(new ErrorMessage(400, message));
     }
 
+    /**
+     * Handles validation errors for handler methods (e.g. @Validated).
+     * Returns a BAD REQUEST response with an error message.
+     * <p>
+     * This method is triggered when a handler method fails validation, such as when using @Validated
+     * on a controller method.
+     * </p>
+     */
     @ExceptionHandler(HandlerMethodValidationException.class)
     @SuppressWarnings("unused")
     public ResponseEntity<ErrorMessage> handleHandlerMethodValidationException(HandlerMethodValidationException ex) {
@@ -96,28 +105,6 @@ public class GlobalExceptionHandler {
                 .body(new ErrorMessage(400, message));
     }
 
-//    /**
-//     * Handles constraint violations for request parameters (e.g. @RequestParam, @PathVariable).
-//     * Returns a list of field validation errors.
-//     */
-    // ❌ NOT used in Spring Boot 3.1+ automatic validation anymore
-    // TODO: Remove if not used manually in your service/logic
-//    @ExceptionHandler(ConstraintViolationException.class)
-//    @SuppressWarnings("unused")
-//    public ResponseEntity<ErrorMessage> handleConstraintViolation(ConstraintViolationException ex) {
-//        log.warn("Constraint violation handler triggered: {}", ex.getMessage());
-//
-//        String combinedMessage = ex.getConstraintViolations().stream()
-//                .map(violation -> {
-//                    String field = extractFieldName(violation.getPropertyPath().toString());
-//                    return field + ": " + violation.getMessage();
-//                })
-//                .collect(Collectors.joining("; "));
-//
-//        return ResponseEntity.badRequest()
-//                .body(new ErrorMessage(400, combinedMessage));
-//    }
-//
     /**
      * Handles DrugNotFoundException when a requested drug does not exist.
      * Returns a 404 NOT FOUND status with an error message.
@@ -138,32 +125,6 @@ public class GlobalExceptionHandler {
         log.error("handleGeneralException - Unhandled exception caught: ", ex);
         return new ResponseEntity<>("An error occurred", HttpStatus.INTERNAL_SERVER_ERROR);
     }
-
-//    /**
-//     * Handles binding errors when Spring cannot bind request parameters to objects.
-//     * Returns a BAD REQUEST response with field details.
-//     */
-    // ❌ Only used for form-like object binding (@ModelAttribute) — which you're not using
-// TODO: Remove if not using @ModelAttribute binding
-
-//    @ExceptionHandler(BindException.class)
-//    @ResponseStatus(HttpStatus.BAD_REQUEST)
-//    @SuppressWarnings("unused")
-//    public Map<String, Object> handleBindException(BindException ex) {
-//        FieldError error = ex.getFieldError();
-//
-//        log.warn("Bind exception occurred on field '{}': {}", error != null ? error.getField() : "unknown", error != null ? error.getDefaultMessage() : "unknown");
-//
-//        Map<String, Object> response = new LinkedHashMap<>();
-//        response.put("error", "Invalid input");
-//        response.put("field", error != null ? error.getField() : null);
-//        response.put("rejectedValue", error != null ? error.getRejectedValue() : null);
-//        response.put("message", error != null ? error.getDefaultMessage() : "Invalid value");
-//        response.put("status", HttpStatus.BAD_REQUEST.value());
-//        response.put("timestamp", OffsetDateTime.now().toString());
-//
-//        return response;
-//    }
 
     /**
      * Handles InvalidSortFieldException when an unknown sort field is requested.
@@ -222,6 +183,11 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ErrorMessage(500, "Failed to send expiry alert email. Please try again later."));
     }
+
+    /**
+     * Handles MissingServletRequestParameterException when a required request parameter is missing.
+     * Returns a BAD REQUEST response with an error message.
+     */
     @ExceptionHandler(MissingServletRequestParameterException.class)
     @SuppressWarnings("unused")
     public ResponseEntity<ErrorMessage> handleMissingParam(MissingServletRequestParameterException ex) {
@@ -230,13 +196,17 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.BAD_REQUEST)
                 .body(new ErrorMessage(400, message));
     }
-//
-//    /**
-//     * Extracts the field name from a property path, which may contain nested properties.
-//     * For example, "user.name" will return "name".
-//     */
-//    private String extractFieldName(String path) {
-//        int lastDot = path.lastIndexOf(".");
-//        return lastDot != -1 ? path.substring(lastDot + 1) : path;
-//    }
+
+    /**
+     * Handles PropertyReferenceException when an invalid sort property is requested.
+     * Returns a BAD REQUEST response with an error message.
+     */
+    @ExceptionHandler(PropertyReferenceException.class)
+    @SuppressWarnings("unused")
+    public ResponseEntity<ErrorMessage> handlePropertyReferenceException(PropertyReferenceException ex) {
+        log.warn("Invalid sort property: {}", ex.getMessage());
+        return ResponseEntity
+                .badRequest()
+                .body(new ErrorMessage(400, "Invalid sort property. Use: drugName, drugName,asc, drugForm, expirationDate."));
+    }
 }

@@ -20,10 +20,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.time.OffsetDateTime;
-import java.util.Arrays;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -191,6 +188,7 @@ public class DrugService {
         return drugs;
     }
 
+
     /**
      * Retrieves a paginated list of drugs.
      *
@@ -198,12 +196,21 @@ public class DrugService {
      * @return a page of drug data transfer objects
      */
     public Page<DrugDTO> getDrugsPaged(Pageable pageable) {
+        pageable.getSort().forEach(order -> {
+            if (!ALLOWED_SORT_PROPERTIES.contains(order.getProperty())) {
+                throw new IllegalArgumentException("Unsupported sort property: " + order.getProperty());
+            }
+        });
+
         log.info("Fetching paged drugs with page: {}", pageable.getPageNumber());
         Page<DrugDTO> drugs = drugRepository.findAll(pageable)
                 .map(drugMapper::mapToDTO);
         log.info("Found {} drugs on page: {}", drugs.getContent().size(), pageable.getPageNumber());
         return drugs;
     }
+    private static final Set<String> ALLOWED_SORT_PROPERTIES = Set.of(
+            "drugName", "drugId", "expirationDate"
+    );
 
     /**
      * Searches for drugs by their description, case-insensitive.

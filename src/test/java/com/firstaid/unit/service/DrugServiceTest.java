@@ -546,6 +546,7 @@ class DrugServiceTest {
             // then
             assertThat(result).hasSize(1);
         }
+
         @Test
         @DisplayName("Should do nothing when no expired drugs found")
         void getExpiredDrugs_shouldDoNothing_whenNoExpiredDrugsFound() {
@@ -621,7 +622,7 @@ class DrugServiceTest {
         @DisplayName("Should return paginated list of drugs")
         void shouldReturnPaginatedDrugs() {
             // given
-            Pageable pageable = PageRequest.of(0, 2);
+            Pageable pageable = PageRequest.of(0, 2, Sort.by("drugName").ascending());
 
             DrugEntity drug1 = DrugEntity.builder().drugId(1).drugName("Altacet").expirationDate(OffsetDateTime.now()).build();
             DrugEntity drug2 = DrugEntity.builder().drugId(2).drugName("Ibuprom").expirationDate(OffsetDateTime.now()).build();
@@ -644,6 +645,19 @@ class DrugServiceTest {
 
             verify(drugRepository).findAll(pageable);
             verify(drugMapper, times(2)).mapToDTO(any(DrugEntity.class));
+        }
+
+        @Test
+        @DisplayName("Should throw IllegalArgumentException for invalid sort field")
+        void shouldThrowIllegalArgumentException_whenInvalidSortFieldIsUsed() {
+            // given
+            String invalidField = "invalidField";
+            Pageable pageable = PageRequest.of(0, 10, Sort.by(invalidField));
+
+            // when + then
+            assertThatThrownBy(() -> drugService.getDrugsPaged(pageable))
+                    .isInstanceOf(IllegalArgumentException.class)
+                    .hasMessageContaining("Unsupported sort property: " + invalidField);
         }
     }
 

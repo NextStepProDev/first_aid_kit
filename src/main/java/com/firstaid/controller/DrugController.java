@@ -104,10 +104,22 @@ public class DrugController {
     @Operation(summary = "Get drugs by name", description = "Returns a list of drugs whose names match the given " +
             "value (case-insensitive)")
     @SuppressWarnings("unused")
-    public ResponseEntity<List<DrugDTO>> getDrugsByName(@RequestParam String name) {
+    public ResponseEntity<List<DrugDTO>> getDrugsByName(
+            @RequestParam
+            @Parameter(description =
+                    "Name must contain at least one non-digit character")
+            String name) {
+        validateName(name);
         log.info("Fetching drugs by name: {}", name);
         return ResponseEntity.ok(drugService.getDrugsByName(name));
     }
+
+    private void validateName(String name) {
+        if (name.matches("\\d+")) {
+            throw new IllegalArgumentException("Name must contain at least one non-digit character");
+        }
+    }
+
 
     @GetMapping("/expiration-until")
     @Validated
@@ -141,7 +153,25 @@ public class DrugController {
     }
 
     @GetMapping("/paged")
-    @Operation(summary = "Get drugs from pages", description = "Returns a list of drugs in the pages")
+//    @Operation(summary = "Get drugs from pages", description = "Returns a list of drugs in the pages")
+    @Operation(
+            summary = "Get all drugs",
+            description = """
+                    Retrieve a list of all drugs with optional sorting(asc, desc).
+                    
+                    Supported sort fields:
+                    • drugId,asc | desc
+                    • drugName
+                    • expirationDate
+                    
+                    Example: ?sort=drugName,asc
+                    """
+    )
+    @Parameter(
+            name = "sort",
+            description = "Sort format: field,asc|desc (e.g. drugName,asc)",
+            example = "drugName,asc"
+    )
     @SuppressWarnings("unused")
     public Page<DrugDTO> getPagedDrugs(@ParameterObject Pageable pageable) {
         log.info("Fetching drugs with pagination");
@@ -174,8 +204,15 @@ public class DrugController {
         return ResponseEntity.ok(drugService.searchByDescription(description));
     }
 
+    @Operation(
+            summary = "Export drugs list to PDF",
+            description = """
+                    Generates and returns a PDF file containing the list of drugs.
+                    📎 Use the URL under "Request URL" to download the file directly in your browser.
+                    ⚠️ Swagger UI cannot display PDF properly.
+                    """
+    )
     @GetMapping("/export/pdf")
-    @Operation(summary = "Export drugs list to PDF")
     @SuppressWarnings("unused")
     public ResponseEntity<byte[]> exportDrugsToPdf() {
         log.info("Exporting drugs list to PDF");

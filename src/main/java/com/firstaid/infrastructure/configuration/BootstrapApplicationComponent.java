@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Component
 @Profile("!test")
 @AllArgsConstructor
+@jakarta.annotation.Generated("bootstrap")
 @SuppressWarnings("unused")
 public class BootstrapApplicationComponent implements ApplicationListener<ContextRefreshedEvent> {
 

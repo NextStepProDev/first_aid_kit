@@ -493,6 +493,21 @@ class DrugControllerIntegrationTest extends AbstractIntegrationTest {
             assertThat(drugs).isNotNull();
             assertThat(drugs.getFirst().getDrugName()).isEqualTo("Aspirin");
         }
+
+        @Test
+        @DisplayName("should return 400 when name only digits")
+        void shouldReturn400_whenNameIsOnlyDigits() {
+            // given
+            String request = "123456";
+
+            // when
+            var response = restTemplate.getForEntity(
+                    "/api/drugs//by-name?name={name}", String.class, request);
+
+            // then
+            assertThat(response.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+            assertThat(response.getBody()).contains("Name must contain at least one non-digit character");
+        }
     }
 
     @Nested
