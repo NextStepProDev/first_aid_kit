@@ -1,12 +1,12 @@
 plugins {
     id 'java'
     id 'org.springframework.boot' version "${springBootVersion}"
-    id 'io.spring.dependency-management' version "${springBootDependencyManagementVersion}"
+    id 'io.spring.dependency-management' version "${dependencyManagementVersion}"
     id 'jacoco'
 }
 
-group = 'pl.zajavka'
-version = '0.0.1-SNAPSHOT'
+group = 'com.firstaid'
+version = '0.1.0-SNAPSHOT'
 
 java {
     toolchain {
@@ -22,6 +22,12 @@ configurations {
 
 repositories {
     mavenCentral()
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "org.testcontainers:testcontainers-bom:${testcontainersVersion}"
+    }
 }
 
 dependencies {
@@ -54,18 +60,9 @@ dependencies {
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
-    // 2 poniższe zależności są do użycia Dockera
+    testImplementation 'org.springframework.boot:spring-boot-testcontainers'
     testImplementation 'org.testcontainers:junit-jupiter'
     testImplementation 'org.testcontainers:postgresql'
-
-}
-
-// to co poniżej to jest potrzebne do użycia Docker podczas testów
-// potrzebujemy równiez 2 dodatkowych zależności:
-dependencyManagement {
-    imports {
-        mavenBom "org.testcontainers:testcontainers-bom:${testcontainersVersion}"
-    }
 }
 
 tasks.named('test') {
@@ -74,7 +71,7 @@ tasks.named('test') {
 
 test {
     useJUnitPlatform()
-    jvmArgs "-javaagent:${classpath.find { it.name.contains('byte-buddy-agent') }}"
+    jvmArgs "-javaagent:${classpath.find { it.name.contains('byte-buddy-agent') }?.path}"
     systemProperty "spring.profiles.active", "test"
     testLogging {
         events "passed", "skipped", "failed"

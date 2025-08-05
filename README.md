@@ -191,16 +191,20 @@ MAIL_PASSWORD=your_app_password             # App password or SMTP password
 2. Build and start the containers:
 
 ```bash
-optional but safe cleanup
-docker-compose down -v --remove-orphans
+# Optional cleanup step
+# ⚠️ Warning: This will remove all containers and their named volumes (e.g., database data)
+docker-compose down -v --remove-orphans 
 
-build project
+# 🔒 Safer alternative (volumes will be preserved)
+docker-compose down --remove-orphans
+
+# Build the project
 ./gradlew build
 
-rebuild containers from scratch (skip Docker cache)
+# Rebuild containers from scratch (skips Docker cache)
 docker-compose build --no-cache
 
-start containers
+# Start containers
 docker-compose up
 ```
 > 📌 Make sure Docker is running before using this method.
