@@ -215,8 +215,15 @@ public class DrugService {
         name = (name != null && !name.isBlank()) ? name.trim() : "";
 
         OffsetDateTime now = OffsetDateTime.now();
+        // If only year is provided, assume December (end of year)
         if (expirationUntilYear != null && expirationUntilMonth == null) {
             expirationUntilMonth = 12;
+            log.debug("Only year provided ({}). Defaulting month to December (12).", expirationUntilYear);
+        }
+        // If only month is provided, assume current year
+        if (expirationUntilYear == null && expirationUntilMonth != null) {
+            expirationUntilYear = now.getYear();
+            log.debug("Only month provided ({}). Defaulting year to current year ({}).", expirationUntilMonth, expirationUntilYear);
         }
         OffsetDateTime expirationUntil = (expirationUntilYear != null && expirationUntilMonth != null)
                 ? DateUtils.buildExpirationDate(expirationUntilYear, expirationUntilMonth)

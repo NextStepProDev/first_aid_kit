@@ -20,13 +20,14 @@ public class PdfExportService {
     private static PdfPTable getPdfPTable(List<DrugDTO> drugs) {
         PdfPTable table = new PdfPTable(4);
         table.setWidthPercentage(100);
-        table.addCell("ID");
+        table.addCell("LP");
         table.addCell("Name");
         table.addCell("Form");
         table.addCell("Expiration");
 
+        int index = 1;
         for (DrugDTO drug : drugs) {
-            table.addCell(String.valueOf(drug.getDrugId()));
+            table.addCell(String.valueOf(index++));
             table.addCell(drug.getDrugName());
             table.addCell(drug.getDrugForm().name());
             table.addCell(drug.getExpirationDate().toLocalDate().toString());
