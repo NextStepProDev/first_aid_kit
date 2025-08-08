@@ -1,16 +1,15 @@
 package com.firstaid.infrastructure.database.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.time.OffsetDateTime;
 
-@Data
 @Entity
 @Builder
+@Getter
+@Setter
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @AllArgsConstructor
 @NoArgsConstructor
 @Table(name = "drugs")
@@ -18,23 +17,23 @@ public class DrugEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "drugs_id")
+    @Column(name = "drug_id")
     private Integer drugId;
 
-    @Column(name = "drugs_name")
+    @Column(name = "drug_name")
     private String drugName;
 
     @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "drugs_form_id", nullable = false)
+    @JoinColumn(name = "drug_form_id", nullable = false)
     private DrugFormEntity drugForm;
 
     @Column(name = "expiration_date")
     private OffsetDateTime expirationDate;
 
-    @Column(name = "drugs_description")
+    @Column(name = "drug_description")
     private String drugDescription;
 
     @Builder.Default
     @Column(name = "alert_sent", nullable = false)
-    private Boolean alertSent = false;
+    private boolean alertSent = false;
 }

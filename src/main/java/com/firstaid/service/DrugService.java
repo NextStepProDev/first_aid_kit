@@ -12,14 +12,14 @@ import com.firstaid.infrastructure.database.mapper.DrugMapper;
 import com.firstaid.infrastructure.database.repository.DrugRepository;
 import com.firstaid.infrastructure.email.EmailService;
 import com.firstaid.infrastructure.util.DateUtils;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
-import lombok.AllArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 
 import java.time.OffsetDateTime;
@@ -30,7 +30,7 @@ import java.util.stream.Collectors;
 
 @Slf4j
 @Service
-@AllArgsConstructor
+@RequiredArgsConstructor
 public class DrugService {
 
     private final DrugRepository drugRepository;
@@ -38,12 +38,25 @@ public class DrugService {
     private final DrugMapper drugMapper;
     private final EmailService emailService;
 
+    @Value("${app.alert.recipientEmail:}")
+    private String alertRecipientEmail;
+
+    private DrugFormDTO parseForm(String value) {
+        if (value == null) {
+            throw new IllegalArgumentException("Drug form cannot be null");
+        }
+        return Arrays.stream(DrugFormDTO.values())
+                .filter(e -> e.name().equalsIgnoreCase(value))
+                .findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("Invalid drug form: " + value + ". Allowed: " +
+                        Arrays.toString(DrugFormDTO.values())));
+    }
 
     @CacheEvict(value = { "drugById", "drugsSearch", "drugStatistics" }, allEntries = true)
     public DrugDTO addNewDrug(DrugRequestDTO dto) {
         log.info("Attempting to add a new drug: {}", dto.getName());
 
-        DrugFormEntity form = drugFormService.resolve(DrugFormDTO.valueOf(dto.getForm()));
+        DrugFormEntity form = drugFormService.resolve(parseForm(dto.getForm()));
 
         DrugEntity entity = DrugEntity.builder()
                 .drugName(dto.getName())
@@ -86,7 +99,7 @@ public class DrugService {
         entity = drugRepository.findById(id)
                 .orElseThrow(() -> new DrugNotFoundException("Drug not found with ID: " + id));
         entity.setDrugName(dto.getName());
-        entity.setDrugForm(drugFormService.resolve(DrugFormDTO.valueOf(dto.getForm())));
+        entity.setDrugForm(drugFormService.resolve(parseForm(dto.getForm())));
         entity.setExpirationDate(DateUtils.buildExpirationDate(dto.getExpirationYear(), dto.getExpirationMonth()));
         entity.setDrugDescription(dto.getDescription());
 
@@ -106,10 +119,15 @@ public class DrugService {
 
         log.info("Found {} drugs to send alerts for", expiringDrugs.size());
 
+        if (alertRecipientEmail == null || alertRecipientEmail.isBlank()) {
+            log.warn("No alert recipient configured (app.alert.recipientEmail). Skipping email sending.");
+            return;
+        }
+
         for (DrugEntity drug : expiringDrugs) {
             log.info("Sending alert for drug: {}", drug.getDrugName());
 
-            if (!drug.getAlertSent()) {
+            if (!drug.isAlertSent()) {
                 String subject = "💊 Drug Expiry Alert";
                 String message = """
                         ⚠️ Attention!
@@ -124,9 +142,7 @@ public class DrugService {
                         """.formatted(drug.getDrugName(), drug.getExpirationDate().toLocalDate(),
                         drug.getDrugDescription());
                 try {
-                    emailService.sendEmail("djdefkon@gmail.com", subject, message);
-//                    emailService.sendEmail("paula.konarska@gmail.com", subject, message);
-
+                    emailService.sendEmail(alertRecipientEmail, subject, message);
                     drug.setAlertSent(true);
                     drugRepository.save(drug);
                     log.info("Alert sent and drug marked as notified: {}", drug.getDrugName());
@@ -179,19 +195,24 @@ public class DrugService {
                 ));
     }
 
-    @Cacheable(value = "drugsSearch", key = "{#name, #form, #expired, #expirationUntilYear, #expirationUntilMonth, #pageable}")
+    @Cacheable(
+        value = "drugsSearch",
+        key = "{#name, #form, #expired, #expirationUntilYear, #expirationUntilMonth, #pageable}",
+        condition = "(#name != null && #name.trim().length() > 0) || (#form != null && #form.trim().length() > 0) || (#expired != null) || (#expirationUntilYear != null) || (#expirationUntilMonth != null)",
+        unless = "#result == null || #result.isEmpty()"
+    )
     public Page<DrugDTO> searchDrugs(
             String name,
             String form,
             Boolean expired,
-            @Min(2024) @Max(2100) Integer expirationUntilYear,
-            @Min(1) @Max(12) Integer expirationUntilMonth,
+            Integer expirationUntilYear,
+            Integer expirationUntilMonth,
             Pageable pageable
     ) {
         log.info("Searching drugs with filters: name={}, form={}, expired={}, expirationUntilYear={}, expirationUntilMonth={}, pageable={}",
                 name, form, expired, expirationUntilYear, expirationUntilMonth, pageable);
 
-        name = (name != null && !name.isBlank()) ? name : "";
+        name = (name != null && !name.isBlank()) ? name.trim() : "";
 
         OffsetDateTime now = OffsetDateTime.now();
         if (expirationUntilYear != null && expirationUntilMonth == null) {
@@ -203,31 +224,32 @@ public class DrugService {
 
         DrugFormEntity formEntity = null;
         if (form != null && !form.isBlank()) {
-            DrugFormDTO formEnum = Arrays.stream(DrugFormDTO.values())
-                    .filter(e -> e.name().equalsIgnoreCase(form))
-                    .findFirst()
-                    .orElseThrow(() -> new IllegalArgumentException("Invalid drug form: " + form));
+            DrugFormDTO formEnum = parseForm(form);
             formEntity = drugFormService.resolve(formEnum);
         }
-
-        Page<DrugEntity> entityResult = drugRepository.search(
-                name,
-                formEntity,
-                expired,
-                now,
-                pageable
-        );
-
-        Page<DrugDTO> result = entityResult.map(drugMapper::mapToDTO);
-
-        if (expirationUntil != null) {
-            log.info("ExpirationUntil filter: {}", expirationUntil);
-            result.forEach(d -> log.info("Drug: {}, expiration: {}", d.getDrugName(), d.getExpirationDate()));
-            List<DrugDTO> filtered = result.stream()
-                    .filter(d -> d.getExpirationDate() != null && !d.getExpirationDate().isAfter(expirationUntil))
-                    .toList();
-            return new org.springframework.data.domain.PageImpl<>(filtered, pageable, filtered.size());
+        String nameLower = name.toLowerCase();
+        Specification<DrugEntity> spec = (root, query, cb) -> cb.conjunction();
+        if (!nameLower.isBlank()) {
+            spec = spec.and((root, query, cb) -> cb.like(cb.lower(root.get("drugName")), "%" + nameLower + "%"));
         }
+        if (formEntity != null) {
+            DrugFormEntity finalFormEntity = formEntity;
+            spec = spec.and((root, query, cb) -> cb.equal(root.get("drugForm"), finalFormEntity));
+        }
+        if (expired != null) {
+            OffsetDateTime finalNow = now;
+            if (Boolean.TRUE.equals(expired)) {
+                spec = spec.and((root, query, cb) -> cb.lessThan(root.get("expirationDate"), finalNow));
+            } else {
+                spec = spec.and((root, query, cb) -> cb.greaterThanOrEqualTo(root.get("expirationDate"), finalNow));
+            }
+        }
+        if (expirationUntil != null) {
+            OffsetDateTime finalUntil = expirationUntil;
+            spec = spec.and((root, query, cb) -> cb.lessThanOrEqualTo(root.get("expirationDate"), finalUntil));
+        }
+        Page<DrugEntity> entityResult = drugRepository.findAll(spec, pageable);
+        Page<DrugDTO> result = entityResult.map(drugMapper::mapToDTO);
         return result;
     }
 }

@@ -39,12 +39,14 @@ public class DrugControllerValidationSliceTest {
     private PdfExportService pdfExportService;
 
     static Stream<Arguments> invalidMonthProvider() {
+        int currentMonth = OffsetDateTime.now().getMonthValue();
         return Stream.of(
-                Arguments.of(true, 2),
-                Arguments.of(true, 11),
+                Arguments.of(true, currentMonth),   // valid: current month with current year
+                Arguments.of(true, 12),             // valid: December
                 Arguments.of(false, 0),
                 Arguments.of(false, null),
-                Arguments.of(false, -1)
+                Arguments.of(false, -1),
+                Arguments.of(false, currentMonth - 1)
         );
     }
 

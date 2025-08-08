@@ -8,7 +8,5 @@ import java.util.Optional;
 
 @Repository
 public interface DrugFormRepository extends JpaRepository<DrugFormEntity, Integer> {
-    Optional<DrugFormEntity> findByName(String pill);
-
-    Optional<DrugFormEntity> findByNameIgnoreCase(String pills);
+    Optional<DrugFormEntity> findByNameIgnoreCase(String formName);
 }

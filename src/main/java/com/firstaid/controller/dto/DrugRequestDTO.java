@@ -1,5 +1,6 @@
 package com.firstaid.controller.dto;
 
+import com.firstaid.infrastructure.validation.NotBeforeCurrentMonth;
 import com.firstaid.infrastructure.validation.NotBeforeCurrentYear;
 import com.firstaid.infrastructure.validation.ValueOfEnum;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -24,7 +25,7 @@ public class DrugRequestDTO {
 
     @NotBlank(message = "Form must not be blank")
     @NotNull(message = "Form must not be null")
-    @Size(max = 36, message = "Form must be at most 50 characters")
+    @Size(max = 36, message = "Form must be at most 36 characters")
     @ValueOfEnum(enumClass = DrugFormDTO.class, message = "Invalid form. Accepted values: {enumValues}")
     @Schema(description = "Form of the drug", example = "PILLS")
     private String form;
@@ -37,11 +38,12 @@ public class DrugRequestDTO {
     @NotNull(message = "Expiration month must not be null")
     @Min(value = 1, message = "Expiration month must be between 1 and 12")
     @Max(value = 12, message = "Expiration month must be between 1 and 12")
+    @NotBeforeCurrentMonth
     @Schema(description = "Expiration month of the drug", example = "5")
     private Integer expirationMonth;
 
     @NotBlank(message = "Description must not be blank")
-    @Size(max = 500, message = "Description must be at most 500 characters")
+    @Size(max = 2000, message = "Description must be at most 2000 characters")
     @Schema(description = "Description of the drug", example = "Painkiller for fever and inflammation")
     @NotNull(message = "Description must not be null")
     private String description;

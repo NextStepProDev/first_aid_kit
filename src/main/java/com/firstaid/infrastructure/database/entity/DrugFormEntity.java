@@ -2,16 +2,14 @@ package com.firstaid.infrastructure.database.entity;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.util.Set;
 
-@Data
 @Entity
 @Builder
+@Getter @Setter
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @AllArgsConstructor
 @NoArgsConstructor
 @Table(name = "drugs_form")
@@ -19,7 +17,7 @@ public class DrugFormEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "drugs_form_id")
+    @Column(name = "drug_form_id")
     private Integer id;
 
     @Column(name = "name", nullable = false, unique = true)

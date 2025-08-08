@@ -97,8 +97,8 @@ public class BootstrapApplicationComponent implements ApplicationListener<Contex
     }
 
     private void resetSequence() {
-        String resetQuery = "ALTER SEQUENCE drugs_drugs_id_seq RESTART WITH 1;";
+        String resetQuery = "ALTER SEQUENCE drugs_drug_id_seq RESTART WITH 1;";
         jdbcTemplate.execute(resetQuery);
-        log.info("Sequence for drugs_drugs_id_seq reset to 1.");
+        log.info("Sequence for drugs_drug_id_seq reset to 1.");
     }
 }

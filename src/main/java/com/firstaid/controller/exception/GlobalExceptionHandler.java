@@ -1,5 +1,6 @@
 package com.firstaid.controller.exception;
 
+import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.mapping.PropertyReferenceException;
 import org.springframework.http.HttpStatus;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.OffsetDateTime;
 import java.util.LinkedHashMap;
@@ -24,20 +26,7 @@ import java.util.stream.Collectors;
 @Slf4j
 public class GlobalExceptionHandler {
 
-    /**
-     * Handles validation errors for DTOs annotated with @Valid.
-     * Returns a detailed error message with field validation errors.
-     * <p>
-     * This method is triggered automatically by Spring when a DTO fails validation.
-     * It collects all field errors and returns them in a structured format.
-     * </p>
-     * <p>
-     * Note: If any DTO field violates annotations like @NotBlank, @Min, @Pattern, or custom validations
-     * (e.g., @ValidDrugsForm), Spring will throw MethodArgumentNotValidException before reaching your controller!
-     */
-//    Jeśli jakiekolwiek pole DTO łamie adnotacje @NotBlank, @Min, @Pattern, lub niestandardową walidację
-//    (@ValidDrugsForm) to Spring automatycznie rzuca MethodArgumentNotValidException, zanim nawet wejdzie do Twojego
-//    kontrolera!
+    // Handles MethodArgumentNotValidException when a method argument validation fails (e.g., DTO validation).
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @SuppressWarnings("unused")
     public ResponseEntity<ValidationErrorMessageDTO> handleValidationErrors(MethodArgumentNotValidException ex) {
@@ -55,9 +44,7 @@ public class GlobalExceptionHandler {
                 .stream()
                 .toList();
 
-        log.error("handleValidationErrors - Validation error occurred: {}", errors);
-
-        log.warn("Validation error occurred: {}", errors);
+        log.warn("Validation error(s): {}", errors);
 
         ValidationErrorMessageDTO validationError = new ValidationErrorMessageDTO(
                 HttpStatus.BAD_REQUEST.value(),
@@ -68,87 +55,55 @@ public class GlobalExceptionHandler {
         return ResponseEntity.badRequest().body(validationError);
     }
 
-    /**
-     * Handles type mismatch errors for request parameters (e.g. @RequestParam, @PathVariable).
-     * Returns a BAD REQUEST response with an error message.
-     */
+    // Handles MethodArgumentTypeMismatchException when a method argument type does not match the expected type (e.g. 1,5 to Integer).
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @SuppressWarnings("unused")
     public ResponseEntity<ErrorMessage> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
         String message = String.format("Invalid value for parameter '%s': %s", ex.getName(), ex.getValue());
-        log.error("handleTypeMismatch - {}", message);
+        log.warn("Type mismatch: {}", message);
         return ResponseEntity
                 .badRequest()
                 .body(new ErrorMessage(400, message));
     }
 
-    /**
-     * Handles validation errors for handler methods (e.g. @Validated).
-     * Returns a BAD REQUEST response with an error message.
-     * <p>
-     * This method is triggered when a handler method fails validation, such as when using @Validated
-     * on a controller method.
-     * </p>
-     */
+    // Handles HandlerMethodValidationException when a method argument validation fails.
     @ExceptionHandler(HandlerMethodValidationException.class)
     @SuppressWarnings("unused")
     public ResponseEntity<ErrorMessage> handleHandlerMethodValidationException(HandlerMethodValidationException ex) {
-        log.warn("Validation error: {}", ex.getMessage());
-
-        ex.getMessage();
         String message = ex.getMessage();
-        log.error("handleHandlerMethodValidationException - Validation error: {}", ex.getMessage());
-
+        log.warn("Handler method validation error: {}", message);
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(new ErrorMessage(400, message));
     }
 
-    /**
-     * Handles DrugNotFoundException when a requested drug does not exist.
-     * Returns a 404 NOT FOUND status with an error message.
-     */
     @ExceptionHandler(DrugNotFoundException.class)
     public ResponseEntity<ErrorMessage> handleDrugNotFound(DrugNotFoundException ex) {
         log.warn("Drug not found: {}", ex.getMessage());
-        log.error("handleDrugNotFound - Drug not found: {}", ex.getMessage());
         return ResponseEntity.status(404).body(new ErrorMessage(404, ex.getMessage()));
     }
 
-    /**
-     * Handles all uncaught exceptions and returns a generic 500 INTERNAL SERVER ERROR.
-     */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<String> handleGeneralException(Exception ex) {
-        log.error("Unhandled exception caught: ", ex);
-        log.error("handleGeneralException - Unhandled exception caught: ", ex);
+        log.error("Unhandled exception", ex);
         return new ResponseEntity<>("An error occurred", HttpStatus.INTERNAL_SERVER_ERROR);
     }
 
-    /**
-     * Handles InvalidSortFieldException when an unknown sort field is requested.
-     * Returns a BAD REQUEST response with an error message.
-     */
+
     @ExceptionHandler(InvalidSortFieldException.class)
     @SuppressWarnings("unused")
     public ResponseEntity<ErrorMessage> handleInvalidSortFieldException(InvalidSortFieldException ex) {
         log.warn("Invalid sort field: {}", ex.getMessage());
-        log.error("handleInvalidSortFieldException - Invalid sort field: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ErrorMessage(400, "Unknown sort field: " + ex.getMessage()));
     }
 
-    /**
-     * Handles HttpMessageNotReadableException when the request body is malformed or unreadable.
-     * Returns a BAD REQUEST response with an error message.
-     */
     @ExceptionHandler(HttpMessageNotReadableException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @SuppressWarnings("unused")
     public Map<String, Object> handleHttpMessageNotReadable(HttpMessageNotReadableException ex) {
         log.warn("Malformed JSON request: {}", ex.getMessage());
-        log.error("handleHttpMessageNotReadable - Malformed JSON request: {}", ex.getMessage());
 
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("error", "Malformed JSON");
@@ -159,54 +114,57 @@ public class GlobalExceptionHandler {
         return response;
     }
 
-    /**
-     * Handles IllegalArgumentException when an invalid argument is passed to a method.
-     * Returns a BAD REQUEST response with an error message.
-     */
+    // Handles IllegalArgumentException when an invalid argument is passed to a method.
     @SuppressWarnings("unused")
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorMessage> handleIllegalArgument(IllegalArgumentException ex) {
-        log.error("handleIllegalArgument - {}", ex.getMessage());
+        log.warn("Illegal argument: {}", ex.getMessage());
         return ResponseEntity
                 .badRequest()
                 .body(new ErrorMessage(400, ex.getMessage()));
     }
 
-    /**
-     * Handles EmailSendingException when there is an error sending an email.
-     * Returns a 500 INTERNAL SERVER ERROR with a generic error message.
-     */
+    // Handles EmailSendingException when there is an error sending an email.
     @ExceptionHandler(EmailSendingException.class)
     @SuppressWarnings("unused")
     public ResponseEntity<ErrorMessage> handleEmailSendingException(EmailSendingException ex) {
-        log.error("Email sending failed: {}", ex.getMessage(), ex);
+        log.error("Email sending failed", ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ErrorMessage(500, "Failed to send expiry alert email. Please try again later."));
     }
 
-    /**
-     * Handles MissingServletRequestParameterException when a required request parameter is missing.
-     * Returns a BAD REQUEST response with an error message.
-     */
+    // Handles MissingServletRequestParameterException when a required request parameter is missing.
     @ExceptionHandler(MissingServletRequestParameterException.class)
     @SuppressWarnings("unused")
     public ResponseEntity<ErrorMessage> handleMissingParam(MissingServletRequestParameterException ex) {
+        log.warn("Missing request parameter: {}", ex.getParameterName());
         String message = "Missing required request parameter: " + ex.getParameterName();
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
                 .body(new ErrorMessage(400, message));
     }
 
-    /**
-     * Handles PropertyReferenceException when an invalid sort property is requested.
-     * Returns a BAD REQUEST response with an error message.
-     */
-    @ExceptionHandler(PropertyReferenceException.class)
+    // Handles ConstraintViolationException when a constraint on a bean property is violated. (@Valid, @Min, @Max, etc.)
+    @ExceptionHandler(ConstraintViolationException.class)
     @SuppressWarnings("unused")
-    public ResponseEntity<ErrorMessage> handlePropertyReferenceException(PropertyReferenceException ex) {
-        log.warn("Invalid sort property: {}", ex.getMessage());
-        return ResponseEntity
-                .badRequest()
-                .body(new ErrorMessage(400, "Invalid sort property. Use: drugName, drugName,asc, drugForm, expirationDate."));
+    public ResponseEntity<ErrorMessage> handleConstraintViolation(ConstraintViolationException ex) {
+        String message = ex.getConstraintViolations().stream()
+                .map(v -> v.getPropertyPath() + ": " + v.getMessage())
+                .collect(Collectors.joining("; "));
+
+        if (message == null || message.isBlank()) {
+            message = "Validation failed";
+        }
+        log.warn("Constraint violation(s): {}", message);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorMessage(400, message));
+    }
+
+    // np. /api/drugsf/ bez dopasowania w RequestMapping.
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ResponseEntity<ErrorMessage> handleNoResourceFound(NoResourceFoundException ex) {
+        log.warn("No resource found: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(new ErrorMessage(404, "Resource not found"));
     }
 }

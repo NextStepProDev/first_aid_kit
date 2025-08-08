@@ -16,6 +16,6 @@ public class DrugFormService {
 
     public DrugFormEntity resolve(DrugFormDTO dto) {
         log.info("Attempting to resolve drug form with name: {}", dto.name());
-        return drugFormRepository.findByName(dto.name()).orElseThrow();
+        return drugFormRepository.findByNameIgnoreCase(dto.name()).orElseThrow();
     }
 }

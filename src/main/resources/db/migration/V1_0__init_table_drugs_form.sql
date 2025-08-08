@@ -1,4 +1,4 @@
-CREATE TABLE DRUGS_FORM (
-    drugs_form_id SERIAL PRIMARY KEY,
+CREATE TABLE drugs_form (
+    drug_form_id SERIAL PRIMARY KEY,
     name TEXT UNIQUE NOT NULL
 );

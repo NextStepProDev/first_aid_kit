@@ -14,7 +14,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 
 @Repository
-public interface DrugRepository extends JpaRepository<DrugEntity, Integer> {
+public interface DrugRepository extends JpaRepository<DrugEntity, Integer>, org.springframework.data.jpa.repository.JpaSpecificationExecutor<DrugEntity> {
 
     @NonNull
     Page<DrugEntity> findAll(@NonNull Pageable pageable);
@@ -36,19 +36,4 @@ public interface DrugRepository extends JpaRepository<DrugEntity, Integer> {
 
     List<DrugEntity> findByDrugForm(DrugFormEntity formEnum);
 
-    @Query("""
-            SELECT d FROM DrugEntity d
-            WHERE LOWER(d.drugName) LIKE LOWER(CONCAT('%', :name, '%'))
-              AND (:formEntity IS NULL OR d.drugForm = :formEntity)
-              AND (:expired IS NULL OR 
-                   (:expired = TRUE AND d.expirationDate < :now) OR 
-                   (:expired = FALSE AND d.expirationDate >= :now))
-            """)
-    Page<DrugEntity> search(
-            @Nullable String name,
-            @Nullable DrugFormEntity formEntity,
-            @Nullable Boolean expired,
-            @NonNull OffsetDateTime now,
-            @NonNull Pageable pageable
-    );
 }

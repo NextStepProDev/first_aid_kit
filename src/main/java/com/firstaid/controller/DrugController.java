@@ -17,6 +17,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.ByteArrayInputStream;
@@ -30,16 +31,20 @@ import java.util.stream.Collectors;
 @RestController
 @RequestMapping("/api/drugs")
 @RequiredArgsConstructor
+@Validated
 public class DrugController {
 
     private final DrugService drugService;
     private final PdfExportService pdfExportService;
 
+    private static final int MAX_SEARCH_PAGE_SIZE = 100;
+    private static final int MAX_PDF_PAGE_SIZE = 100;
+
 
     @GetMapping("/{id}")
     @Operation(summary = "Get drug by ID", description = "Returns a drug by its ID or 404 if not found")
     @SuppressWarnings("unused")
-    public DrugDTO getDrugById(@PathVariable Integer id) {
+    public DrugDTO getDrugById(@PathVariable @Min(value = 1, message = "ID must be >= 1") Integer id) {
         log.info("Fetching drug with ID: {}", id);
         return drugService.getDrugById(id);
     }
@@ -99,7 +104,7 @@ public class DrugController {
                     📎 Use the URL under "Request URL" to download the file directly in your browser.
                     ⚠️ Swagger UI cannot display PDF properly.
                     
-                    ⚠️ PDF generation is limited to 200 records for performance reasons. Use filters to narrow down the dataset.
+                    ⚠️ PDF generation is limited to 100 records for performance reasons. Use filters to narrow down the dataset.
                     """
     )
     @SuppressWarnings("unused")
@@ -107,12 +112,15 @@ public class DrugController {
             @RequestParam(required = false) String name,
             @RequestParam(required = false) String form,
             @RequestParam(required = false) Boolean expired,
-            @RequestParam(required = false) @Min(2024) @Max(2100) Integer expirationUntilYear,
-            @RequestParam(required = false) @Min(1) @Max(12) Integer expirationUntilMonth,
+            @RequestParam(required = false) @Min(value = 2024, message = "Year must be >= 2024")
+            @Max(value = 2100, message = "Year must be <= 2100") Integer expirationUntilYear,
+            @RequestParam(required = false)
+            @Min(value = 1, message = "Bro, months start from 1, not below.")
+            @Max(value = 12, message = "Bro, months go only up to 12") Integer expirationUntilMonth,
             @ParameterObject Pageable pageable
     ) {
-        if (pageable.getPageSize() > 500) {
-            throw new IllegalArgumentException("Maximum page size for PDF export is 500.");
+        if (pageable.getPageSize() > MAX_PDF_PAGE_SIZE) {
+            throw new IllegalArgumentException("Maximum page size for PDF export is " + MAX_PDF_PAGE_SIZE + ".");
         }
         Page<DrugDTO> resultPage = drugService.searchDrugs(
                 name, form, expired, expirationUntilYear, expirationUntilMonth, pageable
@@ -154,6 +162,7 @@ public class DrugController {
     - Available sort fields: drugName, expirationDate, drugForm.name
     - Sort format: sort=field,ASC|DESC (e.g., sort=expirationDate,DESC, sort=drugForm.name,drugName,asc)
     - Default page=0, size=20
+    - Maximum page size for /search: 100
     """
     )
     @SuppressWarnings("unused")
@@ -161,15 +170,17 @@ public class DrugController {
         @RequestParam(required = false) String name,
         @RequestParam(required = false) String form,
         @RequestParam(required = false) Boolean expired,
-        @RequestParam(required = false) @Min(2024) @Max(2100) Integer expirationUntilYear,
-        @RequestParam(required = false) @Min(1) @Max(12) Integer expirationUntilMonth,
+        @RequestParam(required = false) @Min(value = 2024, message = "Year must be >= 2024")
+        @Max(value = 2100, message = "Year must be <= 2100") Integer expirationUntilYear,
+        @RequestParam(required = false)
+        @Min(value = 1, message = "Bro, months start from 1, not below.")
+        @Max(value = 12, message = "Bro, months go only up to 12") Integer expirationUntilMonth,
         @ParameterObject Pageable pageable
     ) {
         log.info("Searching drugs with filters: name={}, form={}, expired={}, expirationUntil={}-{}",
                 name, form, expired, expirationUntilYear, expirationUntilMonth);
-        int maxPageSize = 100;
-        if (pageable.getPageSize() > maxPageSize) {
-            throw new IllegalArgumentException("Maximum page size exceeded. Allowed maximum is " + maxPageSize);
+        if (pageable.getPageSize() > MAX_SEARCH_PAGE_SIZE) {
+            throw new IllegalArgumentException("Maximum page size exceeded. Allowed maximum is " + MAX_SEARCH_PAGE_SIZE);
         }
         return drugService.searchDrugs(name, form, expired, expirationUntilYear, expirationUntilMonth, pageable);
     }
