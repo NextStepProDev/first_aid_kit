@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.lang.NonNull;
+import org.springframework.lang.Nullable;
 import org.springframework.stereotype.Repository;
 
 import java.time.OffsetDateTime;
@@ -34,4 +35,20 @@ public interface DrugRepository extends JpaRepository<DrugEntity, Integer> {
     List<DrugEntity> findByDrugNameContainingIgnoreCase(String name);
 
     List<DrugEntity> findByDrugForm(DrugFormEntity formEnum);
+
+    @Query("""
+            SELECT d FROM DrugEntity d
+            WHERE LOWER(d.drugName) LIKE LOWER(CONCAT('%', :name, '%'))
+              AND (:formEntity IS NULL OR d.drugForm = :formEntity)
+              AND (:expired IS NULL OR 
+                   (:expired = TRUE AND d.expirationDate < :now) OR 
+                   (:expired = FALSE AND d.expirationDate >= :now))
+            """)
+    Page<DrugEntity> search(
+            @Nullable String name,
+            @Nullable DrugFormEntity formEntity,
+            @Nullable Boolean expired,
+            @NonNull OffsetDateTime now,
+            @NonNull Pageable pageable
+    );
 }

@@ -4,8 +4,6 @@ import com.firstaid.controller.dto.*;
 import com.firstaid.infrastructure.pdf.PdfExportService;
 import com.firstaid.service.DrugService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -19,7 +17,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.ByteArrayInputStream;
@@ -38,13 +35,6 @@ public class DrugController {
     private final DrugService drugService;
     private final PdfExportService pdfExportService;
 
-    @GetMapping
-    @Operation(summary = "Get all drugs", description = "Returns a list of all drugs in the database")
-    @SuppressWarnings("unused")
-    public List<DrugDTO> getAllDrugs() {
-        log.info("Fetching all drugs from database");
-        return drugService.getAllDrugs();
-    }
 
     @GetMapping("/{id}")
     @Operation(summary = "Get drug by ID", description = "Returns a drug by its ID or 404 if not found")
@@ -100,123 +90,34 @@ public class DrugController {
         return Arrays.stream(DrugFormDTO.values()).collect(Collectors.toMap(Enum::name, DrugFormDTO::getLabel));
     }
 
-    @GetMapping("/by-name")
-    @Operation(summary = "Get drugs by name", description = "Returns a list of drugs whose names match the given " +
-            "value (case-insensitive)")
-    @SuppressWarnings("unused")
-    public ResponseEntity<List<DrugDTO>> getDrugsByName(
-            @RequestParam
-            @Parameter(description =
-                    "Name must contain at least one non-digit character")
-            String name) {
-        validateName(name);
-        log.info("Fetching drugs by name: {}", name);
-        return ResponseEntity.ok(drugService.getDrugsByName(name));
-    }
 
-    private void validateName(String name) {
-        if (name.matches("\\d+")) {
-            throw new IllegalArgumentException("Name must contain at least one non-digit character");
-        }
-    }
-
-
-    @GetMapping("/expiration-until")
-    @Validated
-    @Operation(summary = "Get drugs expiring until", description = "Returns a list of drugs expiring until the " +
-            "specified year and month")
-    @SuppressWarnings("unused")
-    public ResponseEntity<List<DrugDTO>> getDrugsExpiringUntil(
-            @RequestParam @Min(2024) @Max(2100) int year,
-            @RequestParam @Min(1) @Max(12) int month
-    ) {
-        log.info("Fetching drugs expiring until {}-{}", year, month);
-        return ResponseEntity.ok(drugService.getDrugsExpiringSoon(year, month));
-    }
-
-    @GetMapping("/expired")
-    @Operation(summary = "Get expired drugs", description = "Returns a list of drugs that have already expired")
-    @SuppressWarnings("unused")
-    public ResponseEntity<List<DrugDTO>> getExpiredDrugs() {
-        log.info("Fetching expired drugs");
-        return ResponseEntity.ok(drugService.getExpiredDrugs());
-    }
-
-    @GetMapping("/simple")
-    @Operation(summary = "Get simple list of drugs", description = "Returns a simplified list of drugs containing " +
-            "only " + "ID, name, form, and expiration")
-    @SuppressWarnings("unused")
-    public List<DrugSimpleDTO> getAllDrugsSimple() {
-        log.info("Fetching simplified list of drugs");
-        return drugService.getAllDrugsSimple();
-
-    }
-
-    @GetMapping("/paged")
-//    @Operation(summary = "Get drugs from pages", description = "Returns a list of drugs in the pages")
-    @Operation(
-            summary = "Get all drugs",
-            description = """
-                    Retrieve a list of all drugs with optional sorting(asc, desc).
-                    
-                    Supported sort fields:
-                    • drugId,asc | desc
-                    • drugName
-                    • expirationDate
-                    
-                    Example: ?sort=drugName,asc
-                    """
-    )
-    @Parameter(
-            name = "sort",
-            description = "Sort format: field,asc|desc (e.g. drugName,asc)",
-            example = "drugName,asc"
-    )
-    @SuppressWarnings("unused")
-    public Page<DrugDTO> getPagedDrugs(@ParameterObject Pageable pageable) {
-        log.info("Fetching drugs with pagination");
-        return drugService.getDrugsPaged(pageable);
-    }
-
-    @GetMapping("/by-form")
-    @Operation(summary = "Get drugs by form", description = "Returns a list of drugs matching the given form")
-    @SuppressWarnings("unused")
-    public ResponseEntity<List<DrugDTO>> getDrugsByForm(
-            @RequestParam
-            @Parameter(
-                    description = "Drug form (one of: gel, pills, syrup, drops, suppositories, sachets, cream, spray, " +
-                            "ointment, liquid, powder, injection, bandage, inhaler, patch, solution, other)",
-                    example = "pills"
-            )
-            String form
-    ) {
-        DrugFormDTO formEnum = DrugFormDTO.fromString(form);
-        log.info("Fetching drugs by form: {}", formEnum);
-        return ResponseEntity.ok(drugService.getDrugsByForm(formEnum.name()));
-    }
-
-    @GetMapping("/by-description")
-    @Operation(summary = "Search by description", description = "Returns drugs whose descriptions contain given text" +
-            " (case-insensitive)")
-    @SuppressWarnings("unused")
-    public ResponseEntity<List<DrugDTO>> searchByDescription(@RequestParam String description) {
-        log.info("Searching drugs by description: {}", description);
-        return ResponseEntity.ok(drugService.searchByDescription(description));
-    }
-
+    @GetMapping("/export/pdf")
     @Operation(
             summary = "Export drugs list to PDF",
             description = """
                     Generates and returns a PDF file containing the list of drugs.
                     📎 Use the URL under "Request URL" to download the file directly in your browser.
                     ⚠️ Swagger UI cannot display PDF properly.
+                    
+                    ⚠️ PDF generation is limited to 200 records for performance reasons. Use filters to narrow down the dataset.
                     """
     )
-    @GetMapping("/export/pdf")
     @SuppressWarnings("unused")
-    public ResponseEntity<byte[]> exportDrugsToPdf() {
-        log.info("Exporting drugs list to PDF");
-        List<DrugDTO> drugs = drugService.getAllDrugs();
+    public ResponseEntity<byte[]> exportDrugsToPdf(
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String form,
+            @RequestParam(required = false) Boolean expired,
+            @RequestParam(required = false) @Min(2024) @Max(2100) Integer expirationUntilYear,
+            @RequestParam(required = false) @Min(1) @Max(12) Integer expirationUntilMonth,
+            @ParameterObject Pageable pageable
+    ) {
+        if (pageable.getPageSize() > 500) {
+            throw new IllegalArgumentException("Maximum page size for PDF export is 500.");
+        }
+        Page<DrugDTO> resultPage = drugService.searchDrugs(
+                name, form, expired, expirationUntilYear, expirationUntilMonth, pageable
+        );
+        List<DrugDTO> drugs = resultPage.getContent();
         ByteArrayInputStream pdf = pdfExportService.generatePdf(drugs);
 
         HttpHeaders headers = new HttpHeaders();
@@ -239,33 +140,37 @@ public class DrugController {
         return ResponseEntity.ok(stats);
     }
 
-    @GetMapping("/sorted")
+    @GetMapping("/search")
     @Operation(
-            summary = "Get sorted drugs",
-            description = "Returns a list of drugs sorted by one of the enum fields: name, expirationDate, form, " +
-                    "description in the given direction: asc or desc."
+        summary = "Search drugs with filters, pagination and sorting",
+        description = """
+    Returns a paginated list of drugs filtered by optional parameters:
+    - name (contains, case-insensitive)
+    - form (e.g. pills, syrup)
+    - expired (true/false)
+    - expirationUntilYear & expirationUntilMonth (for expiration filtering)
+
+    Supports sorting and pagination:
+    - Available sort fields: drugName, expirationDate, drugForm.name
+    - Sort format: sort=field,ASC|DESC (e.g., sort=expirationDate,DESC, sort=drugForm.name,drugName,asc)
+    - Default page=0, size=20
+    """
     )
     @SuppressWarnings("unused")
-    public List<DrugDTO> getAllSorted(
-            @RequestParam
-            @Parameter(
-                    description = "Field to sort by",
-                    example = "name",
-                    schema = @Schema(allowableValues = {"id", "name", "form", "expirationDate", "description"})
-            )
-            String sortBy,
-
-            @RequestParam
-            @Parameter(
-                    description = "Sort direction",
-                    example = "asc",
-                    schema = @Schema(allowableValues = {"asc", "desc"})
-            )
-            String direction
+    public Page<DrugDTO> searchDrugs(
+        @RequestParam(required = false) String name,
+        @RequestParam(required = false) String form,
+        @RequestParam(required = false) Boolean expired,
+        @RequestParam(required = false) @Min(2024) @Max(2100) Integer expirationUntilYear,
+        @RequestParam(required = false) @Min(1) @Max(12) Integer expirationUntilMonth,
+        @ParameterObject Pageable pageable
     ) {
-        log.info("Fetching all drugs sorted by {} in {} order", sortBy, direction);
-        SortFieldDTO field = SortFieldDTO.fromString(sortBy);
-        SortDirectionDTO dir = SortDirectionDTO.fromString(direction);
-        return drugService.getAllSorted(field.getFieldName(), dir);
+        log.info("Searching drugs with filters: name={}, form={}, expired={}, expirationUntil={}-{}",
+                name, form, expired, expirationUntilYear, expirationUntilMonth);
+        int maxPageSize = 100;
+        if (pageable.getPageSize() > maxPageSize) {
+            throw new IllegalArgumentException("Maximum page size exceeded. Allowed maximum is " + maxPageSize);
+        }
+        return drugService.searchDrugs(name, form, expired, expirationUntilYear, expirationUntilMonth, pageable);
     }
 }

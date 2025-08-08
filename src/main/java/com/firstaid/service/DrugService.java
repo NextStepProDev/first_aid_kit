@@ -1,26 +1,31 @@
 package com.firstaid.service;
 
-import com.firstaid.controller.dto.*;
+import com.firstaid.controller.dto.DrugDTO;
+import com.firstaid.controller.dto.DrugFormDTO;
+import com.firstaid.controller.dto.DrugRequestDTO;
+import com.firstaid.controller.dto.DrugStatisticsDTO;
 import com.firstaid.controller.exception.DrugNotFoundException;
 import com.firstaid.controller.exception.EmailSendingException;
-import com.firstaid.controller.exception.InvalidSortFieldException;
 import com.firstaid.infrastructure.database.entity.DrugEntity;
 import com.firstaid.infrastructure.database.entity.DrugFormEntity;
 import com.firstaid.infrastructure.database.mapper.DrugMapper;
 import com.firstaid.infrastructure.database.repository.DrugRepository;
 import com.firstaid.infrastructure.email.EmailService;
 import com.firstaid.infrastructure.util.DateUtils;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 import java.time.OffsetDateTime;
-import java.util.*;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -33,14 +38,8 @@ public class DrugService {
     private final DrugMapper drugMapper;
     private final EmailService emailService;
 
-    /**
-     * Adds a new drug to the database and clears relevant caches.
-     *
-     * @param dto the drug data transfer object containing drug details
-     */
 
-    @CacheEvict(value = {"allDrugs", "simpleDrugs", "drugById", "drugsByName", "expiredDrugs", "expiringDrugs",
-            "sortedDrugs"}, allEntries = true)
+    @CacheEvict(value = { "drugById", "drugsSearch", "drugStatistics" }, allEntries = true)
     public DrugDTO addNewDrug(DrugRequestDTO dto) {
         log.info("Attempting to add a new drug: {}", dto.getName());
 
@@ -59,30 +58,18 @@ public class DrugService {
         return drugMapper.mapToDTO(saved);
     }
 
-    /**
-     * Retrieves a drug by its ID.
-     *
-     * @param id the ID of the drug to retrieve
-     * @return the drug data transfer object
-     * @throws DrugNotFoundException if the drug with the given ID does not exist
-     */
     @Cacheable(value = "drugById", key = "#id")
     public DrugDTO getDrugById(Integer id) {
         log.info("Fetching drug with ID: {}", id);
         DrugEntity entity;
 
-            entity = drugRepository.findById(id)
-                    .orElseThrow(() -> new DrugNotFoundException("Drug not found with ID: " + id));
+        entity = drugRepository.findById(id)
+                .orElseThrow(() -> new DrugNotFoundException("Drug not found with ID: " + id));
         log.info("Found drug with ID: {}", id);
         return drugMapper.mapToDTO(entity);
     }
 
-    /**
-     * Deletes a drug by its ID and clears relevant caches.
-     *
-     * @param id the ID of the drug to delete
-     */
-    @CacheEvict(value = {"allDrugs", "simpleDrugs", "drugById", "drugsByName", "expiredDrugs", "expiringDrugs", "sortedDrugs"}, allEntries = true)
+    @CacheEvict(value = { "drugById", "drugsSearch", "drugStatistics" }, allEntries = true)
     public void deleteDrug(Integer id) {
         log.info("Attempting to delete drug with ID: {}", id);
         DrugEntity entity = drugRepository.findById(id)
@@ -92,20 +79,12 @@ public class DrugService {
         log.info("Successfully deleted drug with ID: {}", id);
     }
 
-    /**
-     * Updates an existing drug by its ID and clears relevant caches.
-     *
-     * @param id  the ID of the drug to update
-     * @param dto the drug data transfer object containing updated details
-     * @return the updated drug data transfer object
-     */
-    @CacheEvict(value = {"allDrugs", "simpleDrugs", "drugById", "drugsByName", "expiredDrugs", "expiringDrugs",
-            "sortedDrugs"}, allEntries = true)
+    @CacheEvict(value = { "drugById", "drugsSearch", "drugStatistics" }, allEntries = true)
     public DrugDTO updateDrug(Integer id, DrugRequestDTO dto) {
         log.info("Attempting to update drug with ID: {}", id);
         DrugEntity entity;
-            entity = drugRepository.findById(id)
-                    .orElseThrow(() -> new DrugNotFoundException("Drug not found with ID: " + id));
+        entity = drugRepository.findById(id)
+                .orElseThrow(() -> new DrugNotFoundException("Drug not found with ID: " + id));
         entity.setDrugName(dto.getName());
         entity.setDrugForm(drugFormService.resolve(DrugFormDTO.valueOf(dto.getForm())));
         entity.setExpirationDate(DateUtils.buildExpirationDate(dto.getExpirationYear(), dto.getExpirationMonth()));
@@ -117,136 +96,7 @@ public class DrugService {
         return drugMapper.mapToDTO(saved);
     }
 
-    /**
-     * Retrieves a list of drugs by their name, case-insensitive.
-     *
-     * @param name the name to search for
-     * @return a list of drugs matching the name
-     */
-    @Cacheable(value = "drugsByName", key = "#name")
-    public List<DrugDTO> getDrugsByName(String name) {
-        log.info("Fetching drugs with name: {}", name);
-
-        List<DrugDTO> drugs = drugRepository.findByDrugNameContainingIgnoreCase(name).stream()
-                .map(drugMapper::mapToDTO)
-                .collect(Collectors.toList());
-
-        log.info("Found {} drugs with name: {}", drugs.size(), name);
-        return drugs;
-    }
-
-    /**
-     * Retrieves a list of drugs that are expiring soon, based on the provided year and month.
-     *
-     * @param year  the year to check for expiring drugs
-     * @param month the month to check for expiring drugs
-     * @return a list of drugs expiring soon
-     */
-    @Cacheable(value = "expiringDrugs", key = "#year + '-' + #month")
-    public List<DrugDTO> getDrugsExpiringSoon(int year, int month) {
-        log.info("Fetching drugs expiring soon up to year: {} and month: {}", year, month);
-        OffsetDateTime until = DateUtils.buildExpirationDate(year, month);
-        List<DrugDTO> drugs = drugRepository.findByExpirationDateLessThanEqualOrderByExpirationDateAsc(until).stream()
-                .map(drugMapper::mapToDTO)
-                .toList();
-        log.info("Found {} drugs expiring soon.", drugs.size());
-        return drugs;
-    }
-
-    /**
-     * Retrieves a list of expired drugs.
-     *
-     * @return a list of expired drugs
-     */
-    @Cacheable("expiredDrugs")
-    public List<DrugDTO> getExpiredDrugs() {
-        log.info("Fetching expired drugs.");
-
-        OffsetDateTime now = OffsetDateTime.now();
-        List<DrugDTO> expiredDrugs = drugRepository.findAll().stream()
-                .filter(drug -> drug.getExpirationDate() != null && drug.getExpirationDate().isBefore(now))
-                .map(drugMapper::mapToDTO)
-                .sorted(Comparator.comparing(DrugDTO::getExpirationDate))
-                .collect(Collectors.toList());
-
-        log.info("Found {} expired drugs.", expiredDrugs.size());
-        return expiredDrugs;
-    }
-
-    /**
-     * Retrieves a simplified list of drugs containing only ID, name, form, and expiration date.
-     *
-     * @return a list of simplified drug data transfer objects
-     */
-    @Cacheable("simpleDrugs")
-    public List<DrugSimpleDTO> getAllDrugsSimple() {
-        log.info("Fetching all simple drug data.");
-        List<DrugSimpleDTO> drugs = drugRepository.findAll().stream()
-                .map(drugMapper::mapToSimpleDTO)
-                .toList();
-        log.info("Found {} drugs total.", drugs.size());
-        return drugs;
-    }
-
-
-    /**
-     * Retrieves a paginated list of drugs.
-     *
-     * @param pageable the pagination information
-     * @return a page of drug data transfer objects
-     */
-    public Page<DrugDTO> getDrugsPaged(Pageable pageable) {
-        pageable.getSort().forEach(order -> {
-            if (!ALLOWED_SORT_PROPERTIES.contains(order.getProperty())) {
-                throw new IllegalArgumentException("Unsupported sort property: " + order.getProperty());
-            }
-        });
-
-        log.info("Fetching paged drugs with page: {}", pageable.getPageNumber());
-        Page<DrugDTO> drugs = drugRepository.findAll(pageable)
-                .map(drugMapper::mapToDTO);
-        log.info("Found {} drugs on page: {}", drugs.getContent().size(), pageable.getPageNumber());
-        return drugs;
-    }
-    private static final Set<String> ALLOWED_SORT_PROPERTIES = Set.of(
-            "drugName", "drugId", "expirationDate"
-    );
-
-    /**
-     * Searches for drugs by their description, case-insensitive.
-     *
-     * @param text the text to search for in drug descriptions
-     * @return a list of drugs whose descriptions contain the given text
-     */
-    @Cacheable(value = "drugsByDescription", key = "#text")
-    public List<DrugDTO> searchByDescription(String text) {
-        log.info("Searching drugs by description: {}", text);
-        List<DrugDTO> drugs = drugRepository.findByDrugDescriptionIgnoreCaseContaining(text).stream()
-                .map(drugMapper::mapToDTO)
-                .toList();
-        log.info("Found {} drugs with description containing: {}", drugs.size(), text);
-        return drugs;
-    }
-
-    /**
-     * Retrieves all drugs from the database.
-     *
-     * @return a list of all drug data transfer objects
-     */
-    @Cacheable("allDrugs")
-    public List<DrugDTO> getAllDrugs() {
-        return drugRepository.findAll()
-                .stream()
-                .map(drugMapper::mapToDTO)
-                .toList();
-    }
-
-    /**
-     * Sends expiry alert emails for drugs expiring up to the specified year and month.
-     *
-     * @param year  the year to check for expiring drugs
-     * @param month the month to check for expiring drugs
-     */
+    @CacheEvict(value = { "drugById", "drugsSearch", "drugStatistics" }, allEntries = true)
     public void sendExpiryAlertEmails(int year, int month) {
         log.info("Sending expiry alert emails for drugs expiring up to {}/{}", year, month);
 
@@ -290,12 +140,6 @@ public class DrugService {
         }
     }
 
-    /**
-     * Sends default expiry alert emails for drugs expiring in the next month.
-     * This method clears relevant caches after sending the emails.
-     */
-    @CacheEvict(value = {"allDrugs", "simpleDrugs", "drugById", "drugsByName", "expiredDrugs", "expiringDrugs",
-            "sortedDrugs"}, allEntries = true)
     public void sendDefaultExpiryAlertEmails() {
         log.info("Sending default expiry alert emails.");
         OffsetDateTime now = OffsetDateTime.now();
@@ -303,12 +147,6 @@ public class DrugService {
         sendExpiryAlertEmails(oneMonthLater.getYear(), oneMonthLater.getMonthValue());
     }
 
-    /**
-     * Retrieves statistics about drugs, including total count, expired count, active count, alerts sent, and drugs
-     * grouped by form.
-     *
-     * @return a data transfer object containing drug statistics
-     */
     @Cacheable("drugStatistics")
     public DrugStatisticsDTO getDrugStatistics() {
         log.info("Fetching drug statistics.");
@@ -332,33 +170,6 @@ public class DrugService {
                 .build();
     }
 
-    /**
-     * Retrieves a list of drugs by their form.
-     *
-     * @param form the form of the drugs to retrieve
-     * @return a list of drug data transfer objects matching the specified form
-     */
-    @Cacheable("drugsByForm")
-    public List<DrugDTO> getDrugsByForm(String form) {
-        DrugFormDTO formEnum = Arrays.stream(DrugFormDTO.values())
-                .filter(e -> e.name().equalsIgnoreCase(form))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Invalid drug form: " + form));
-
-        DrugFormEntity formEntity = drugFormService.resolve(formEnum);
-        List<DrugEntity> entities = drugRepository.findByDrugForm(formEntity);
-        return entities.stream()
-                .map(drugMapper::mapToDTO)
-                .toList();
-    }
-
-    /**
-     * Maps raw data grouped by drug form into a map with form names as keys and counts as values.
-     *
-     * @param rawData the raw data containing form names and counts
-     * @return a map with form names as keys and counts as values
-     */
-    @Cacheable("drugsByForm")
     private Map<String, Long> mapGroupedByForm(List<Object[]> rawData) {
         return rawData.stream()
                 .filter(arr -> arr[0] != null && arr[1] != null)
@@ -368,34 +179,55 @@ public class DrugService {
                 ));
     }
 
-    /**
-     * Retrieves all drugs sorted by the specified field.
-     *
-     * @param sortBy the field to sort by
-     * @return a list of sorted drug data transfer objects
-     */
-    public List<DrugDTO> getAllSorted(String sortBy, SortDirectionDTO direction) {
-        log.info("Fetching all drugs sorted by {} in {} order", sortBy, direction);
-        String field = resolveSortField(sortBy);
+    @Cacheable(value = "drugsSearch", key = "{#name, #form, #expired, #expirationUntilYear, #expirationUntilMonth, #pageable}")
+    public Page<DrugDTO> searchDrugs(
+            String name,
+            String form,
+            Boolean expired,
+            @Min(2024) @Max(2100) Integer expirationUntilYear,
+            @Min(1) @Max(12) Integer expirationUntilMonth,
+            Pageable pageable
+    ) {
+        log.info("Searching drugs with filters: name={}, form={}, expired={}, expirationUntilYear={}, expirationUntilMonth={}, pageable={}",
+                name, form, expired, expirationUntilYear, expirationUntilMonth, pageable);
 
-        Sort sort = direction == SortDirectionDTO.DESC
-                ? Sort.by(field).descending()
-                : Sort.by(field).ascending();
+        name = (name != null && !name.isBlank()) ? name : "";
 
-        return drugRepository.findAll(sort).stream()
-                .map(drugMapper::mapToDTO)
-                .toList();
-    }
+        OffsetDateTime now = OffsetDateTime.now();
+        if (expirationUntilYear != null && expirationUntilMonth == null) {
+            expirationUntilMonth = 12;
+        }
+        OffsetDateTime expirationUntil = (expirationUntilYear != null && expirationUntilMonth != null)
+                ? DateUtils.buildExpirationDate(expirationUntilYear, expirationUntilMonth)
+                : null;
 
-    private String resolveSortField(String sortBy) {
-        log.info("Resolving sort field for: {}", sortBy);
-        return switch (sortBy) {
-            case "id" -> "drugId";
-            case "name" -> "drugName";
-            case "expirationDate" -> "expirationDate";
-            case "form" -> "drugForm.name";
-            case "description" -> "drugDescription";
-            default -> throw new InvalidSortFieldException(sortBy);
-        };
+        DrugFormEntity formEntity = null;
+        if (form != null && !form.isBlank()) {
+            DrugFormDTO formEnum = Arrays.stream(DrugFormDTO.values())
+                    .filter(e -> e.name().equalsIgnoreCase(form))
+                    .findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("Invalid drug form: " + form));
+            formEntity = drugFormService.resolve(formEnum);
+        }
+
+        Page<DrugEntity> entityResult = drugRepository.search(
+                name,
+                formEntity,
+                expired,
+                now,
+                pageable
+        );
+
+        Page<DrugDTO> result = entityResult.map(drugMapper::mapToDTO);
+
+        if (expirationUntil != null) {
+            log.info("ExpirationUntil filter: {}", expirationUntil);
+            result.forEach(d -> log.info("Drug: {}, expiration: {}", d.getDrugName(), d.getExpirationDate()));
+            List<DrugDTO> filtered = result.stream()
+                    .filter(d -> d.getExpirationDate() != null && !d.getExpirationDate().isAfter(expirationUntil))
+                    .toList();
+            return new org.springframework.data.domain.PageImpl<>(filtered, pageable, filtered.size());
+        }
+        return result;
     }
 }

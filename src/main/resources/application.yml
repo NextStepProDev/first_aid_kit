@@ -20,15 +20,8 @@ spring:
   cache:
     type: caffeine
     cache-names:
-      - allDrugs
       - drugById
-      - drugsByName
-      - expiredDrugs
-      - expiringDrugs
-      - simpleDrugs
-      - sortedDrugs
-      - drugsByDescription
-      - drugsByForm
+      - drugsSearch
       - drugStatistics
 
     caffeine:
