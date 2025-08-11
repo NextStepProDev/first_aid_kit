@@ -19,7 +19,7 @@ public class AlertController {
     private final DrugService drugService;
     private final EmailService emailService;
 
-    @PostMapping("/alerts")
+    @PostMapping("/alert")
     @SuppressWarnings("unused")
     public ResponseEntity<String> sendAlerts() {
         drugService.sendDefaultExpiryAlertEmails();

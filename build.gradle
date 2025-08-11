@@ -6,7 +6,7 @@ plugins {
 }
 
 group = 'com.firstaid'
-version = '0.1.0-SNAPSHOT'
+version = '0.2.0-SNAPSHOT'
 
 java {
     toolchain {
@@ -91,5 +91,17 @@ jacocoTestReport {
         xml.required = true
         csv.required = false
         html.outputLocation = layout.buildDirectory.dir('reports/jacoco/test/html')
+    }
+
+    jacocoTestCoverageVerification {
+        violationRules {
+            rule {
+                limit {
+                    counter = 'LINE'
+                    value = 'COVEREDRATIO'
+                    minimum = '0.80'.toBigDecimal()
+                }
+            }
+        }
     }
 }

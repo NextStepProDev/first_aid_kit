@@ -9,6 +9,7 @@ import java.time.OffsetDateTime;
 public class ExpirationDateMapperHelper {
 
     @Named("mapExpirationDateToYearMonth")
+    @SuppressWarnings("unused")
     public String mapExpirationDateToYearMonth(OffsetDateTime expirationDate) {
         return expirationDate.getYear() + "-" + String.format("%02d", expirationDate.getMonthValue());
     }

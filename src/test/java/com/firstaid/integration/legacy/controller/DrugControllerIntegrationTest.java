@@ -8,7 +8,7 @@
 //import com.firstaid.infrastructure.database.repository.DrugFormRepository;
 //import com.firstaid.infrastructure.database.repository.DrugRepository;
 //import com.firstaid.infrastructure.email.EmailService;
-//import com.firstaid.integration.AbstractIntegrationTest;
+//import com.firstaid.integration.base.AbstractIntegrationTest;
 //import com.firstaid.util.DrugRequestDtoBuilder;
 //import org.junit.jupiter.api.Assertions;
 //import org.junit.jupiter.api.DisplayName;

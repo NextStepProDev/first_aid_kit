@@ -69,22 +69,36 @@ public class GlobalExceptionHandler {
 
     // Handles HandlerMethodValidationException when a method argument validation fails.
     @ExceptionHandler(HandlerMethodValidationException.class)
-    @SuppressWarnings("unused")
+    @SuppressWarnings({"unused", "removal"})
     public ResponseEntity<ErrorMessage> handleHandlerMethodValidationException(HandlerMethodValidationException ex) {
-        String message = ex.getMessage();
-        log.warn("Handler method validation error: {}", message);
-        return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
+        // Build concise, user-friendly message per invalid parameter
+        var parts = ex.getAllValidationResults().stream()
+                .flatMap(r -> r.getResolvableErrors().stream()
+                        .map(err -> {
+                            String param = r.getMethodParameter().getParameterName();
+                            String msg = err.getDefaultMessage();
+                            if (msg == null || msg.isBlank()) {
+                                msg = err.toString();
+                            }
+                            return param + ": " + msg;
+                        }))
+                .toList();
+
+        String message = parts.isEmpty() ? ex.getMessage() : String.join("; ", parts);
+        log.warn("Handler method validation error(s): {}", message);
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(new ErrorMessage(400, message));
     }
 
     @ExceptionHandler(DrugNotFoundException.class)
+    @SuppressWarnings("unused")
     public ResponseEntity<ErrorMessage> handleDrugNotFound(DrugNotFoundException ex) {
         log.warn("Drug not found: {}", ex.getMessage());
         return ResponseEntity.status(404).body(new ErrorMessage(404, ex.getMessage()));
     }
 
     @ExceptionHandler(Exception.class)
+    @SuppressWarnings("unused")
     public ResponseEntity<String> handleGeneralException(Exception ex) {
         log.error("Unhandled exception", ex);
         return new ResponseEntity<>("An error occurred", HttpStatus.INTERNAL_SERVER_ERROR);
@@ -152,7 +166,7 @@ public class GlobalExceptionHandler {
                 .map(v -> v.getPropertyPath() + ": " + v.getMessage())
                 .collect(Collectors.joining("; "));
 
-        if (message == null || message.isBlank()) {
+        if (message.isBlank()) {
             message = "Validation failed";
         }
         log.warn("Constraint violation(s): {}", message);
@@ -160,8 +174,22 @@ public class GlobalExceptionHandler {
                 .body(new ErrorMessage(400, message));
     }
 
-    // np. /api/drugsf/ bez dopasowania w RequestMapping.
+    // Handles invalid property references raised by Spring Data (e.g., bad sort field or derived query property)
+    @ExceptionHandler(PropertyReferenceException.class)
+    @SuppressWarnings("unused")
+    public ResponseEntity<ErrorMessage> handlePropertyReferenceException(PropertyReferenceException ex) {
+        Class<?> rawType = ex.getType().getType();
+        String entityType = rawType.getSimpleName();
+        String property = ex.getPropertyName();
+        String message = String.format("Invalid property reference '%s' for %s", property, entityType);
+        log.warn("Property reference error: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorMessage(400, message));
+    }
+
+    // e.g. /api/drugsf/
     @ExceptionHandler(NoResourceFoundException.class)
+    @SuppressWarnings("unused")
     public ResponseEntity<ErrorMessage> handleNoResourceFound(NoResourceFoundException ex) {
         log.warn("No resource found: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
