@@ -39,7 +39,7 @@ feature is also available for listing current drugs.
 Full documentation available via [Swagger UI](http://localhost:8081/swagger-ui/index.html).
 
 ### 🔹 CRUD Operations
-- **`GET /api/drugs`**  
+- **`GET /api/drugs/search`**  
   _Returns a list of all drugs in the database._
 
 - **`GET /api/drugs/{id}`**  
@@ -57,33 +57,26 @@ Full documentation available via [Swagger UI](http://localhost:8081/swagger-ui/i
 ---
 
 ### 🔎 Filtering & Search
-- **`GET /api/drugs/by-name?name={value}`**  
-  _Returns drugs matching the given name (case-insensitive)._
+- **`GET /api/drugs/search`**  
+  _Unified search endpoint with filtering, sorting, and pagination._
+  **Query params:**
+  - `name` — substring match (case-insensitive)
+  - `form` — enum value (e.g., `PILL`, `GEL`, `SYRUP`, ...)
+  - `expired` — `true|false`
+  - `expirationUntilYear` — e.g., `2025`
+  - `expirationUntilMonth` — `1..12`
+  - `page` — default `0`
+  - `size` — default `20`, **max `100`**
+  - `sort` — e.g., `drugName,asc` or `expirationDate,desc`
 
-- **`GET /api/drugs/by-description?description={text}`**  
-  _Searches for drugs containing the given text in their description._
-
-- **`GET /api/drugs/by-form?form={value}`**  
-  _Returns drugs matching the given form._
-
-- **`GET /api/drugs/expiration-until?year={yyyy}&month={mm}`**  
-  _Returns drugs expiring until the specified year and month._
-
-- **`GET /api/drugs/expired`**  
-  _Returns a list of expired drugs._
-
-- **`GET /api/drugs/sorted?sortBy={field}`**  
-  _Returns drugs sorted by the specified field (`drugsName`, `expirationDate`, `drugsForm`)._
-
-- **`GET /api/drugs/paged?page=0&size=10&sort=field,asc`**  
-  _Returns paginated list of drugs._
+_Examples:_
+- `/api/drugs/search?name=ibu&form=GEL`
+- `/api/drugs/search?expired=true&sort=expirationDate,asc&size=100`
+- `/api/drugs/search?expirationUntilYear=2025&expirationUntilMonth=10`
 
 ---
 
 ### 📚 Supplementary
-- **`GET /api/drugs/simple`**  
-  _Returns a simplified list of drugs (ID, name, form, expiration)._
-
 - **`GET /api/drugs/forms`**  
   _Returns available drug form enum values._
 
@@ -94,7 +87,7 @@ Full documentation available via [Swagger UI](http://localhost:8081/swagger-ui/i
   _Returns statistics (total, expired, active, alerts sent, etc.)._
 
 - **`GET /api/drugs/export/pdf`**  
-  _Exports the full drug list to PDF._
+  _Exports the current drug list to PDF. Supports optional `size` (default `20`, max `100`)._
 
 - **`GET /api/drugs/alert`**  
   _Sends expiry alert emails for drugs expiring in the current month._
@@ -105,11 +98,10 @@ Full documentation available via [Swagger UI](http://localhost:8081/swagger-ui/i
 
 To improve performance, the application uses Spring Cache backed by Caffeine:
 
-- Frequently accessed drug data is cached to reduce database load and improve response time.
-- Cached entries expire automatically after 10 minutes.
-- Write operations invalidate relevant caches to ensure consistency.
-- Configuration is managed via `spring.cache.caffeine.spec` in `application.yml`.
-  
+- Caches: `drugById`, `drugsSearch`, `drugStatistics`.
+- TTL/size configured via `spring.cache.caffeine.spec` in `application.yml`.
+- Mutating operations (POST/PUT/DELETE) evict relevant entries to keep reads consistent.
+
 ## Prerequisites
 
 Before running this application, ensure you have the following installed:
@@ -211,7 +203,7 @@ docker-compose up
 
 ### 3. Access the application:
    - Swagger UI: [http://localhost:8081/swagger-ui/index.html](http://localhost:8081/swagger-ui/index.html)
-   - pgAdmin: [http://localhost:8080](http://localhost:8080)
+   - pgAdmin: [http://localhost:5050](http://localhost:5050) (or the value of `PGADMIN_PORT` from `.env`)
 
 ### 4. Persistent database data
 
@@ -269,21 +261,35 @@ Swagger UI: [http://localhost:8081/swagger-ui/index.html](http://localhost:8081/
 
 ## ✅ Tests
 
-The project includes unit, web, and integration tests using JUnit, Spring Test, and Testcontainers.
-Core areas like logic, validation, error handling, and email alerts are covered.  
-You can run tests using:
+This project includes **unit**, **slice (web)**, **integration**, and **E2E** tests using JUnit 5, Spring Test, and Testcontainers.
+
+Run all tests:
 
 ```bash
 ./gradlew test
 ```
 
-Covered areas:
-- Unit tests (e.g. `DrugsServiceTest`)
-- Web layer tests (`DrugsControllerWebMvcTest`)
-- Validation logic (e.g. enum mapping, request field validation)
-- Integration tests (DrugIntegrationTest with Testcontainers and real PostgreSQL)
-- Exception handling
-- Email alert logic
+### Test suites
+
+- **Integration** (`src/test/java/.../integration`)
+  - `base/AbstractIntegrationTest` — shared Testcontainers/JPA context for integration tests.
+  - `web/GlobalExceptionIntegrationTest` — global exception handling & error responses.
+  - `e2e/base/DrugCreateE2ETest` — end-to-end flows for creating drugs and triggering email alerts.
+  - `e2e/base/SmokeApiTest` — high-level API smoke coverage.
+
+- **Slice / Controller** (`src/test/java/.../slice/controller`)
+  - `DrugControllerValidationSliceTest` — controller validation & request mapping (no DB).
+
+- **Unit / Service** (`src/test/java/.../unit/service`)
+  - `DrugServiceTest` — pure unit tests of business logic.
+
+### Covered areas
+- Request validation (DTO fields & method parameters)
+- Error handling (`@ControllerAdvice`) and HTTP status codes
+- Search endpoint: filters, pagination, sorting
+- PDF export constraints (size limits)
+- Email alert logic (including failure path)
+- CRUD: create / update / delete / get
 
 ## Example API Usage
 
@@ -304,31 +310,42 @@ Content-Type: application/json
 }
 ```
 
-### Get expiring drugs for specific month
+### Search: expiring drugs until a specific month
 
 ```http
-GET /api/drugs/expiring?year=2025&month=10
+GET /api/drugs/search?expirationUntilYear=2025&expirationUntilMonth=10&sort=expirationDate,asc&size=100
 ```
 
-Response example:
+_Response example (paginated):_
 
 ```json
-[
-  {
-    "drugId": 1,
-    "drugName": "Paracetamol",
-    "drugForm": "PILL",
-    "expirationDate": "2025-10-31T00:00:00Z",
-    "drugDescription": "Painkiller"
-  },
-  {
-    "drugId": 2,
-    "drugName": "Ibuprofen",
-    "drugForm": "GEL",
-    "expirationDate": "2025-10-15T00:00:00Z",
-    "drugDescription": "Used to treat pain and fever"
-  }
-]
+{
+  "content": [
+    {
+      "drugId": 1,
+      "drugName": "Paracetamol",
+      "drugForm": "PILL",
+      "expirationDate": "2025-10-31T00:00:00Z",
+      "drugDescription": "Painkiller"
+    },
+    {
+      "drugId": 2,
+      "drugName": "Ibuprofen",
+      "drugForm": "GEL",
+      "expirationDate": "2025-10-15T00:00:00Z",
+      "drugDescription": "Used to treat pain and fever"
+    }
+  ],
+  "pageable": { "pageNumber": 0, "pageSize": 100 },
+  "totalElements": 2,
+  "totalPages": 1
+}
+```
+
+### Search: by name and form
+
+```http
+GET /api/drugs/search?name=ibu&form=GEL
 ```
 
 
@@ -336,8 +353,8 @@ Response example:
 
 This project uses [semantic versioning](https://semver.org/) — format: `MAJOR.MINOR.PATCH`.
 
-- Current version: **`0.1.0-SNAPSHOT`**
-- Latest stable release: [**`v0.1.0`**](https://github.com/NextStepProDev/first_aid_kit/releases/tag/v0.1.0)
+- Current version: **`0.2.0-SNAPSHOT`**
+- Latest stable release: [**`v0.2.0`**](https://github.com/NextStepProDev/first_aid_kit/releases/tag/v0.1.0)
 
 You can browse release history [here](https://github.com/NextStepProDev/first_aid_kit/releases).
 

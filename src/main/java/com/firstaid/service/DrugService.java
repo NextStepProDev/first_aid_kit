@@ -12,9 +12,9 @@ import com.firstaid.infrastructure.database.mapper.DrugMapper;
 import com.firstaid.infrastructure.database.repository.DrugRepository;
 import com.firstaid.infrastructure.email.EmailService;
 import com.firstaid.infrastructure.util.DateUtils;
-import org.springframework.beans.factory.annotation.Value;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
@@ -39,6 +39,7 @@ public class DrugService {
     private final EmailService emailService;
 
     @Value("${app.alert.recipientEmail:}")
+    @SuppressWarnings("unused")
     private String alertRecipientEmail;
 
     private DrugFormDTO parseForm(String value) {
@@ -93,7 +94,7 @@ public class DrugService {
     }
 
     @CacheEvict(value = { "drugById", "drugsSearch", "drugStatistics" }, allEntries = true)
-    public DrugDTO updateDrug(Integer id, DrugRequestDTO dto) {
+    public void updateDrug(Integer id, DrugRequestDTO dto) {
         log.info("Attempting to update drug with ID: {}", id);
         DrugEntity entity;
         entity = drugRepository.findById(id)
@@ -103,10 +104,8 @@ public class DrugService {
         entity.setExpirationDate(DateUtils.buildExpirationDate(dto.getExpirationYear(), dto.getExpirationMonth()));
         entity.setDrugDescription(dto.getDescription());
 
-        DrugEntity saved = drugRepository.save(entity);
-
+        drugRepository.save(entity);
         log.info("Successfully updated drug with ID: {}", id);
-        return drugMapper.mapToDTO(saved);
     }
 
     @CacheEvict(value = { "drugById", "drugsSearch", "drugStatistics" }, allEntries = true)
@@ -225,9 +224,10 @@ public class DrugService {
             expirationUntilYear = now.getYear();
             log.debug("Only month provided ({}). Defaulting year to current year ({}).", expirationUntilMonth, expirationUntilYear);
         }
-        OffsetDateTime expirationUntil = (expirationUntilYear != null && expirationUntilMonth != null)
-                ? DateUtils.buildExpirationDate(expirationUntilYear, expirationUntilMonth)
-                : null;
+        OffsetDateTime expirationUntil =
+                (expirationUntilYear != null)
+                        ? DateUtils.buildExpirationDate(expirationUntilYear, expirationUntilMonth)
+                        : null;
 
         DrugFormEntity formEntity = null;
         if (form != null && !form.isBlank()) {
@@ -244,19 +244,16 @@ public class DrugService {
             spec = spec.and((root, query, cb) -> cb.equal(root.get("drugForm"), finalFormEntity));
         }
         if (expired != null) {
-            OffsetDateTime finalNow = now;
-            if (Boolean.TRUE.equals(expired)) {
-                spec = spec.and((root, query, cb) -> cb.lessThan(root.get("expirationDate"), finalNow));
+            if (expired) {
+                spec = spec.and((root, query, cb) -> cb.lessThan(root.get("expirationDate"), now));
             } else {
-                spec = spec.and((root, query, cb) -> cb.greaterThanOrEqualTo(root.get("expirationDate"), finalNow));
+                spec = spec.and((root, query, cb) -> cb.greaterThanOrEqualTo(root.get("expirationDate"), now));
             }
         }
         if (expirationUntil != null) {
-            OffsetDateTime finalUntil = expirationUntil;
-            spec = spec.and((root, query, cb) -> cb.lessThanOrEqualTo(root.get("expirationDate"), finalUntil));
+            spec = spec.and((root, query, cb) -> cb.lessThanOrEqualTo(root.get("expirationDate"), expirationUntil));
         }
         Page<DrugEntity> entityResult = drugRepository.findAll(spec, pageable);
-        Page<DrugDTO> result = entityResult.map(drugMapper::mapToDTO);
-        return result;
+        return entityResult.map(drugMapper::mapToDTO);
     }
 }

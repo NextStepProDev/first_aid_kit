@@ -20,7 +20,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import java.io.ByteArrayInputStream;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -55,6 +54,8 @@ public class DrugController {
     public ResponseEntity<DrugDTO> addDrug(@RequestBody @Valid DrugRequestDTO dto) {
         log.info("Adding new drug with name: {}", dto.getName());
         DrugDTO addedDrug = drugService.addNewDrug(dto);
+        Integer id = (addedDrug != null) ? addedDrug.getDrugId() : null;
+        log.info("Drug added successfully{}", id != null ? " with ID: " + id : "");
         return ResponseEntity.status(HttpStatus.CREATED).body(addedDrug);
     }
 
@@ -126,7 +127,7 @@ public class DrugController {
                 name, form, expired, expirationUntilYear, expirationUntilMonth, pageable
         );
         List<DrugDTO> drugs = resultPage.getContent();
-        ByteArrayInputStream pdf = pdfExportService.generatePdf(drugs);
+        byte[] pdf = pdfExportService.generatePdf(drugs);
 
         HttpHeaders headers = new HttpHeaders();
         headers.add("Content-Disposition", "inline; filename=drugs_list.pdf");
@@ -135,7 +136,7 @@ public class DrugController {
                 .ok()
                 .headers(headers)
                 .contentType(MediaType.APPLICATION_PDF)
-                .body(pdf.readAllBytes());
+                .body(pdf);
     }
 
     @GetMapping("/statistics")

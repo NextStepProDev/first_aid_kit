@@ -19,11 +19,12 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.OffsetDateTime;
 import java.util.stream.Stream;
 
+import static com.firstaid.util.BuildJson.buildJson;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(DrugController.class)
-@Import(NoSecurityConfig.class) // to jest konieczne, ponieważ security blokuje test
+@Import(NoSecurityConfig.class)
 public class DrugControllerValidationSliceTest {
 
     @Autowired
@@ -93,24 +94,6 @@ public class DrugControllerValidationSliceTest {
         );
     }
 
-    private String buildJson(String name, String form, Integer year, Integer month, String description) {
-        return """
-                {
-                  "name": %s,
-                  "form": %s,
-                  "expirationYear": %s,
-                  "expirationMonth": %s,
-                  "description": %s
-                }
-                """.formatted(
-                name == null ? "null" : "\"" + name + "\"",
-                form == null ? "null" : "\"" + form + "\"",
-                year == null ? "null" : year,
-                month == null ? "null" : month,
-                description == null ? "null" : "\"" + description + "\""
-        );
-    }
-
     @ParameterizedTest
     @MethodSource("invalidMonthProvider")
     @DisplayName("Should return 201 for valid month and 400 for invalid month")
@@ -154,9 +137,9 @@ public class DrugControllerValidationSliceTest {
     @ParameterizedTest
     @MethodSource("formProvider")
     @DisplayName("Should return 201 for valid form and 400 for invalid form")
-    // slice test, czyli testujemy tylko kontroler
+        // slice test, czyli testujemy tylko kontroler
     void shouldReturnBadRequestForInvalidForm(boolean isValid, String form) throws Exception {
-        String json = buildJson("Ibuprofen", form, 2025, 12, "lek przeciwbólowy");
+        String json = buildJson("Ibuprofen", form, 2025, 12, "pain relief medication");
         mockMvc.perform(
                         post("/api/drugs")
                                 .contentType(MediaType.APPLICATION_JSON)
@@ -194,7 +177,8 @@ public class DrugControllerValidationSliceTest {
     @Test
     @DisplayName("Should return 201 for valid request")
     void shouldReturn201ForValidRequest() throws Exception {
-        String json = buildJson("Ibuprofen", "PILLS", 2025, 12, "lek przeciwbólowy");
+        String json = buildJson("Ibuprofen", "PILLS", 2025, 12,
+                "pain relief medication");
         mockMvc.perform(post("/api/drugs")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json))

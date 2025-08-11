@@ -1,4 +1,4 @@
-package com.firstaid.integration;
+package com.firstaid.integration.base;
 
 import com.firstaid.config.NoSecurityConfig;
 import com.firstaid.infrastructure.database.repository.DrugRepository;
