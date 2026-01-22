@@ -1,7 +1,11 @@
 package com.firstaid.controller.alert;
 
-import com.firstaid.infrastructure.email.EmailService;
 import com.firstaid.service.DrugService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -13,16 +17,20 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/email")
 @RequiredArgsConstructor
-@SuppressWarnings("unused")
+@Tag(name = "Alerts", description = "Drug expiry alert endpoints")
+@SecurityRequirement(name = "bearerAuth")
 public class AlertController {
 
     private final DrugService drugService;
-    private final EmailService emailService;
 
     @PostMapping("/alert")
-    @SuppressWarnings("unused")
+    @Operation(summary = "Send expiry alerts", description = "Sends expiry alert emails for the current user's drugs expiring within the next month")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Alerts sent successfully"),
+            @ApiResponse(responseCode = "401", description = "Unauthorized - JWT token required")
+    })
     public ResponseEntity<String> sendAlerts() {
-        drugService.sendDefaultExpiryAlertEmails();
+        drugService.sendDefaultExpiryAlertEmailsForCurrentUser();
         return ResponseEntity.ok("Expiry alert emails have been sent");
     }
 }

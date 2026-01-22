@@ -33,6 +33,10 @@ feature is also available for listing current drugs.
 - **Statistics**:
   - Get statistics on the total number of drugs, expired drugs, active drugs, and alerts sent.
 
+- **Authentication & Security**:
+  - JWT-based authentication (access + refresh tokens).
+  - User registration and login via **email + password**.
+  - Role-based access control (USER, ADMIN).
 
 ## 📦 API Endpoints
 
@@ -51,8 +55,52 @@ Full documentation available via [Swagger UI](http://localhost:8081/swagger-ui/i
 - **`PUT /api/drugs/{id}`**  
   _Updates an existing drug by its ID._
 
-- **`DELETE /api/drugs/{id}`**  
+- **`DELETE /api/drugs/{id}`**
   _Deletes a drug by its ID._
+
+---
+
+### 🔐 Authentication
+
+- **`POST /api/auth/register`**
+  _Registers a new user account._
+  ```json
+  {
+    "username": "john_doe",
+    "email": "john@example.com",
+    "password": "securePassword123",
+    "name": "John Doe"
+  }
+  ```
+
+- **`POST /api/auth/login`**
+  _Authenticates user with email and password. Returns JWT tokens._
+  ```json
+  {
+    "email": "john@example.com",
+    "password": "securePassword123"
+  }
+  ```
+  _Response:_
+  ```json
+  {
+    "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+    "refreshToken": "eyJhbGciOiJIUzI1NiIs...",
+    "userId": 1,
+    "username": "john_doe",
+    "email": "john@example.com"
+  }
+  ```
+
+- **`POST /api/auth/refresh`**
+  _Refreshes the access token using a valid refresh token._
+  ```json
+  {
+    "refreshToken": "eyJhbGciOiJIUzI1NiIs..."
+  }
+  ```
+
+> **Note:** Protected endpoints require `Authorization: Bearer <accessToken>` header.
 
 ---
 
@@ -106,7 +154,7 @@ To improve performance, the application uses Spring Cache backed by Caffeine:
 
 Before running this application, ensure you have the following installed:
 
-- Java 21
+- Java 25
 - Gradle (build system used in this project)
 - PostgreSQL (or any compatible relational database)
 - Docker (optional, for containerized setup)
@@ -135,9 +183,22 @@ There are two ways to run the application: locally via IntelliJ/Gradle or using 
 
    You can also find example values in the `.env.example` file.
 
-3. Run the application (with dev profile):
+   **Alternative: Use `local` profile (recommended for IntelliJ)**
+
+   The `local` profile (`application-local.yml`) has hardcoded database and mail credentials, so you don't need to set environment variables manually.
+
+   In IntelliJ:
+   - Go to **Run → Edit Configurations**
+   - Set **Active profiles:** `local`
+   - Or add VM option: `-Dspring.profiles.active=local`
+
+3. Run the application:
    ```bash
+   # With dev profile (requires env variables)
    ./gradlew bootRun --args='--spring.profiles.active=dev'
+
+   # With local profile (no env variables needed)
+   ./gradlew bootRun --args='--spring.profiles.active=local'
    ```
 
 4. Access Swagger UI:
@@ -237,10 +298,11 @@ Swagger UI: [http://localhost:8081/swagger-ui/index.html](http://localhost:8081/
 
 ## Technologies Used
 
-- Java 21
-- Spring Boot
+- Java 25
+- Spring Boot 4.0.1
 - Spring Web / Validation / Security / Data JPA
 - Spring Cache with Caffeine
+- JWT (JSON Web Tokens) for authentication
 - MapStruct
 - PostgreSQL
 - Flyway

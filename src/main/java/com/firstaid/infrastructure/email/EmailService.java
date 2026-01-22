@@ -13,7 +13,6 @@ import org.springframework.stereotype.Service;
 public class EmailService {
 
     private final JavaMailSender mailSender;
-    @SuppressWarnings("unused")
     private final Environment env;
 
     public void sendEmail(String to, String subject, String body) {

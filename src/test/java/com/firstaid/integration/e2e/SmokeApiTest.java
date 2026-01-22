@@ -4,20 +4,17 @@ import com.firstaid.controller.dto.DrugFormDTO;
 import com.firstaid.infrastructure.database.entity.DrugEntity;
 import com.firstaid.infrastructure.database.entity.DrugFormEntity;
 import com.firstaid.infrastructure.database.repository.DrugFormRepository;
-import com.firstaid.infrastructure.database.repository.DrugRepository;
 import com.firstaid.infrastructure.pdf.PdfExportService;
 import com.firstaid.infrastructure.util.DateUtils;
+import com.firstaid.integration.base.AbstractIntegrationTest;
 import com.firstaid.service.DrugFormService;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Nested;
-import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
@@ -31,9 +28,25 @@ import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
-@SpringBootTest
 @AutoConfigureMockMvc(addFilters = false)
-class SmokeApiTest {
+class SmokeApiTest extends AbstractIntegrationTest {
+
+    // Test Constants
+    private static final int INVALID_PAGE_SIZE = 101;
+    private static final int TEST_PAGE_SIZE = 5;
+    private static final int DEFAULT_PAGE_SIZE = 10;
+    private static final String FORM_PILLS = "PILLS";
+    private static final String INVALID_FORM = "INVALID_FORM";
+    private static final int NONEXISTENT_DRUG_ID = 999_999;
+    private static final String NAME_FILTER = "asp";
+    private static final String PDF_FILENAME = "drugs_list.pdf";
+    private static final int FUTURE_YEAR = OffsetDateTime.now().getYear() + 1;
+    private static final int INVALID_YEAR = 2023;
+    private static final int VALID_YEAR = 2026;
+    private static final int DEFAULT_MONTH = 12;
+    private static final int INVALID_MONTH_HIGH = 13;
+    private static final int INVALID_MONTH_LOW = 0;
+    private static final byte[] DUMMY_PDF_BYTES = "dummy-pdf".getBytes();
 
     @Autowired
     MockMvc mvc;
@@ -41,18 +54,36 @@ class SmokeApiTest {
     @MockitoBean
     PdfExportService pdfExportService;
 
-    @Value("${app.alert.recipientEmail:}")
-    @SuppressWarnings("unused")
-    private String alertRecipientEmail;
-
-    @Autowired
-    DrugRepository drugRepository;
-
     @Autowired
     DrugFormRepository drugFormRepository;
 
     @Autowired
     DrugFormService drugFormService;
+
+    // Helper Methods
+    private void expectJsonOkResponse(ResultActions result) throws Exception {
+        result.andExpect(status().isOk())
+              .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON));
+    }
+
+    private void expectPdfResponse(ResultActions result) throws Exception {
+        result.andExpect(status().isOk())
+              .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PDF))
+              .andExpect(header().string("Content-Disposition", containsString("inline")))
+              .andExpect(header().string("Content-Disposition", containsString(PDF_FILENAME)));
+    }
+
+    private DrugEntity createTestDrug(String name, String description) {
+        DrugFormEntity form = drugFormService.resolve(DrugFormDTO.PILLS);
+        return drugRepository.saveAndFlush(DrugEntity.builder()
+                .drugName(name)
+                .drugForm(form)
+                .owner(getTestUser())
+                .expirationDate(DateUtils.buildExpirationDate(FUTURE_YEAR, DEFAULT_MONTH))
+                .drugDescription(description)
+                .alertSent(false)
+                .build());
+    }
 
     @Nested
     @DisplayName("Search API")
@@ -60,16 +91,14 @@ class SmokeApiTest {
         @Test
         @DisplayName("GET /api/drugs/search -> 200 (no filters, default size)")
         void search_shouldReturn200_withoutFilters() throws Exception {
-            mvc.perform(get("/api/drugs/search"))
-                    .andExpect(status().isOk())
-                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON));
+            expectJsonOkResponse(mvc.perform(get("/api/drugs/search")));
         }
 
         @Test
         @DisplayName("GET /api/drugs/search -> 400 when size > 100")
         void search_shouldReject_whenSizeOver100() throws Exception {
             mvc.perform(get("/api/drugs/search")
-                            .param("size", "101"))
+                            .param("size", String.valueOf(INVALID_PAGE_SIZE)))
                     .andExpect(status().isBadRequest());
         }
 
@@ -78,76 +107,68 @@ class SmokeApiTest {
         void search_shouldSupportSortByNestedField() throws Exception {
             mvc.perform(get("/api/drugs/search")
                             .param("sort", "drugForm.name,asc")
-                            .param("size", "5"))
+                            .param("size", String.valueOf(TEST_PAGE_SIZE)))
                     .andExpect(status().isOk());
         }
 
         @Test
         @DisplayName("GET /api/drugs/search -> 200 with name filter")
         void search_shouldReturn200_withNameFilter() throws Exception {
-            mvc.perform(get("/api/drugs/search").param("name", "asp"))
-                    .andExpect(status().isOk())
-                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON));
+            expectJsonOkResponse(mvc.perform(get("/api/drugs/search").param("name", NAME_FILTER)));
         }
 
         @Test
         @DisplayName("GET /api/drugs/search -> 200 with form filter (valid)")
         void search_shouldReturn200_withValidFormFilter() throws Exception {
-            mvc.perform(get("/api/drugs/search").param("form", "PILLS"))
-                    .andExpect(status().isOk())
-                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON));
+            expectJsonOkResponse(mvc.perform(get("/api/drugs/search").param("form", FORM_PILLS)));
         }
 
         @Test
         @DisplayName("GET /api/drugs/search -> 400 with form filter (invalid)")
         void search_shouldReturn400_withInvalidFormFilter() throws Exception {
-            mvc.perform(get("/api/drugs/search").param("form", "INVALID_FORM"))
+            mvc.perform(get("/api/drugs/search").param("form", INVALID_FORM))
                     .andExpect(status().isBadRequest());
         }
 
         @Test
         @DisplayName("GET /api/drugs/search -> 200 with expired=true")
         void search_shouldReturn200_withExpiredTrue() throws Exception {
-            mvc.perform(get("/api/drugs/search").param("expired", "true"))
-                    .andExpect(status().isOk())
-                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON));
+            expectJsonOkResponse(mvc.perform(get("/api/drugs/search").param("expired", "true")));
         }
 
         @Test
         @DisplayName("GET /api/drugs/search -> 200 with expired=false")
         void search_shouldReturn200_withExpiredFalse() throws Exception {
-            mvc.perform(get("/api/drugs/search").param("expired", "false"))
-                    .andExpect(status().isOk())
-                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON));
+            expectJsonOkResponse(mvc.perform(get("/api/drugs/search").param("expired", "false")));
         }
 
         @Test
         @DisplayName("GET /api/drugs/search -> 200 with year-only (defaults month=12)")
         void search_shouldReturn200_withOnlyYear() throws Exception {
-            mvc.perform(get("/api/drugs/search").param("expirationUntilYear", "2026"))
-                    .andExpect(status().isOk())
-                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON));
+            expectJsonOkResponse(mvc.perform(get("/api/drugs/search")
+                    .param("expirationUntilYear", String.valueOf(VALID_YEAR))));
         }
 
         @Test
         @DisplayName("GET /api/drugs/search -> 200 with month-only (defaults year=current)")
         void search_shouldReturn200_withOnlyMonth() throws Exception {
-            mvc.perform(get("/api/drugs/search").param("expirationUntilMonth", "12"))
-                    .andExpect(status().isOk())
-                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON));
+            expectJsonOkResponse(mvc.perform(get("/api/drugs/search")
+                    .param("expirationUntilMonth", String.valueOf(DEFAULT_MONTH))));
         }
 
         @Test
         @DisplayName("GET /api/drugs/search -> 400 when year < 2024")
         void search_shouldReturn400_whenYearBelowMin() throws Exception {
-            mvc.perform(get("/api/drugs/search").param("expirationUntilYear", "2023"))
+            mvc.perform(get("/api/drugs/search")
+                            .param("expirationUntilYear", String.valueOf(INVALID_YEAR)))
                     .andExpect(status().isBadRequest());
         }
 
         @Test
         @DisplayName("GET /api/drugs/search -> 400 when month > 12")
         void search_shouldReturn400_whenMonthAboveMax() throws Exception {
-            mvc.perform(get("/api/drugs/search").param("expirationUntilMonth", "13"))
+            mvc.perform(get("/api/drugs/search")
+                            .param("expirationUntilMonth", String.valueOf(INVALID_MONTH_HIGH)))
                     .andExpect(status().isBadRequest());
         }
 
@@ -165,17 +186,13 @@ class SmokeApiTest {
         @Test
         @DisplayName("GET /api/drugs/forms -> 200 and JSON")
         void forms_shouldReturn200() throws Exception {
-            mvc.perform(get("/api/drugs/forms"))
-                    .andExpect(status().isOk())
-                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON));
+            expectJsonOkResponse(mvc.perform(get("/api/drugs/forms")));
         }
 
         @Test
         @DisplayName("GET /api/drugs/forms/dictionary -> 200 and JSON")
         void formsDictionary_shouldReturn200() throws Exception {
-            mvc.perform(get("/api/drugs/forms/dictionary"))
-                    .andExpect(status().isOk())
-                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON));
+            expectJsonOkResponse(mvc.perform(get("/api/drugs/forms/dictionary")));
         }
     }
 
@@ -185,7 +202,7 @@ class SmokeApiTest {
         @Test
         @DisplayName("GET /api/drugs/{id} -> 404 when not found")
         void getById_shouldReturn404_whenNotFound() throws Exception {
-            mvc.perform(get("/api/drugs/{id}", 999_999))
+            mvc.perform(get("/api/drugs/{id}", NONEXISTENT_DRUG_ID))
                     .andExpect(status().isNotFound());
         }
 
@@ -193,72 +210,55 @@ class SmokeApiTest {
         @DisplayName("GET /api/drugs/{id} -> 200 when entity exists (seeded)")
         @Transactional
         void getById_shouldReturn200_whenExists_seeded() throws Exception {
-            DrugFormEntity form = drugFormService.resolve(DrugFormDTO.PILLS);
+            DrugEntity saved = createTestDrug("Seeded-Drug", "seeded");
 
-            DrugEntity entity = DrugEntity.builder()
-                    .drugName("Seeded-Drug")
-                    .drugForm(form)
-                    .expirationDate(DateUtils.buildExpirationDate(OffsetDateTime.now().getYear() + 1, 12))
-                    .drugDescription("seeded")
-                    .alertSent(false)
-                    .build();
-            DrugEntity saved = drugRepository.saveAndFlush(entity);
-
-            mvc.perform(get("/api/drugs/{id}", saved.getDrugId()))
-                    .andExpect(status().isOk())
-                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON));
+            expectJsonOkResponse(mvc.perform(get("/api/drugs/{id}", saved.getDrugId())));
         }
     }
 
     @Nested
     @DisplayName("PDF Export API")
     class PdfExportTests {
+        @BeforeEach
+        void setupPdfMock() {
+            given(pdfExportService.generatePdf(anyList())).willReturn(DUMMY_PDF_BYTES);
+        }
+
         @Test
         @DisplayName("GET /api/drugs/export/pdf -> 400 when size > 100")
         void exportPdf_shouldReject_whenSizeOver100() throws Exception {
             mvc.perform(get("/api/drugs/export/pdf")
-                            .param("size", "101"))
+                            .param("size", String.valueOf(INVALID_PAGE_SIZE)))
                     .andExpect(status().isBadRequest());
         }
 
         @Test
         @DisplayName("GET /api/drugs/export/pdf -> 200 for valid export")
         void exportPdf_shouldReturn200_whenValidExport() throws Exception {
-            // given (stub PDF service)
-            given(pdfExportService.generatePdf(anyList()))
-                    .willReturn("dummy-pdf".getBytes());
-
-            // when + then
-            mvc.perform(get("/api/drugs/export/pdf")
+            ResultActions result = mvc.perform(get("/api/drugs/export/pdf")
                             .param("page", "0")
-                            .param("size", "10")
-                            .param("sort", "drugName,asc"))
-                    .andExpect(status().isOk())
-                    .andExpect(content().contentTypeCompatibleWith("application/pdf"))
-                    .andExpect(header().string("Content-Disposition", containsString("inline")))
-                    .andExpect(header().string("Content-Disposition", containsString("drugs_list.pdf")))
-                    .andExpect(result -> {
-                        byte[] bytes = result.getResponse().getContentAsByteArray();
-                        assertThat(bytes).isNotEmpty();
-                    });
+                            .param("size", String.valueOf(DEFAULT_PAGE_SIZE))
+                            .param("sort", "drugName,asc"));
+
+            expectPdfResponse(result);
+            result.andExpect(r -> {
+                byte[] bytes = r.getResponse().getContentAsByteArray();
+                assertThat(bytes).isNotEmpty();
+            });
         }
 
         @Test
         @DisplayName("GET /api/drugs/export/pdf -> 200 with filters applied")
         void exportPdf_shouldReturn200_withFilters() throws Exception {
-            given(pdfExportService.generatePdf(anyList())).willReturn("dummy-pdf".getBytes());
-
-            mvc.perform(get("/api/drugs/export/pdf")
-                            .param("name", "asp")
-                            .param("form", "PILLS")
+            ResultActions result = mvc.perform(get("/api/drugs/export/pdf")
+                            .param("name", NAME_FILTER)
+                            .param("form", FORM_PILLS)
                             .param("expired", "false")
                             .param("page", "0")
-                            .param("size", "10")
-                            .param("sort", "drugName,asc"))
-                    .andExpect(status().isOk())
-                    .andExpect(content().contentTypeCompatibleWith("application/pdf"))
-                    .andExpect(header().string("Content-Disposition", containsString("inline")))
-                    .andExpect(header().string("Content-Disposition", containsString("drugs_list.pdf")));
+                            .param("size", String.valueOf(DEFAULT_PAGE_SIZE))
+                            .param("sort", "drugName,asc"));
+
+            expectPdfResponse(result);
         }
     }
 
@@ -268,9 +268,7 @@ class SmokeApiTest {
         @Test
         @DisplayName("GET /api/drugs/statistics -> 200")
         void getStatistics_shouldReturn200() throws Exception {
-            mvc.perform(get("/api/drugs/statistics"))
-                    .andExpect(status().isOk())
-                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON));
+            expectJsonOkResponse(mvc.perform(get("/api/drugs/statistics")));
         }
 
         @Test
@@ -295,7 +293,7 @@ class SmokeApiTest {
         void addDrug_shouldReturn400_whenInvalidData() throws Exception {
             mvc.perform(get("/api/drugs/add")
                             .param("drugName", "Aspirin")
-                            .param("drugForm", "PILLS")
+                            .param("drugForm", FORM_PILLS)
                             .param("expirationDate", "2023-01-01"))
                     .andExpect(status().isBadRequest());
         }
@@ -305,7 +303,7 @@ class SmokeApiTest {
         void addDrug_shouldReturn400_whenInvalidForm() throws Exception {
             mvc.perform(get("/api/drugs/add")
                             .param("drugName", "Aspirin")
-                            .param("drugForm", "INVALID_FORM")
+                            .param("drugForm", INVALID_FORM)
                             .param("expirationDate", String.valueOf(OffsetDateTime.now())))
                     .andExpect(status().isBadRequest());
         }
@@ -317,8 +315,8 @@ class SmokeApiTest {
         @Test
         @DisplayName("POST /api/drugs -> 201 for valid payload")
         void addDrug_shouldReturn201_whenValidData() throws Exception {
-            String json = buildJson("Aspirin", "PILLS",
-                    OffsetDateTime.now().plusYears(1).getYear(),
+            String json = buildJson("Aspirin", FORM_PILLS,
+                    FUTURE_YEAR,
                     LocalDate.now().getMonthValue(),
                     "Painkiller for fever and inflammation");
 
@@ -331,8 +329,8 @@ class SmokeApiTest {
         @Test
         @DisplayName("POST /api/drugs -> 400 when form is invalid")
         void addDrug_shouldReturn400_whenFormInvalid() throws Exception {
-            String json = buildJson("Aspirin", "INVALID_FORM",
-                    OffsetDateTime.now().plusYears(1).getYear(),
+            String json = buildJson("Aspirin", INVALID_FORM,
+                    FUTURE_YEAR,
                     LocalDate.now().getMonthValue(),
                     "Desc");
 
@@ -372,15 +370,15 @@ class SmokeApiTest {
         }
 
         @Test
-        @DisplayName("GET /api/drugs/unknown-endpoint -> 404 Not Found")
+        @DisplayName("GET /api/drugs/unknown-endpoint/extra -> 404 Not Found")
         void unknownEndpoint_shouldReturn404() throws Exception {
             mvc.perform(get("/api/drugs/unknown-endpoint/extra"))
                     .andExpect(status().isNotFound());
         }
 
         @Test
-        @DisplayName("GET /api/drugs/unknown-endpoint -> 404 Not Found")
-        void unrecognizeEndpoint_shouldReturn400() throws Exception {
+        @DisplayName("GET /api/drugs/unknown-endpoint -> 400 Bad Request (parsed as ID)")
+        void unrecognizedEndpoint_shouldReturn400() throws Exception {
             mvc.perform(get("/api/drugs/unknown-endpoint"))
                     .andExpect(status().isBadRequest());
         }
@@ -388,48 +386,40 @@ class SmokeApiTest {
         @Test
         @DisplayName("GET /api/drugs/search -> 200 with multiple sort fields")
         void search_shouldReturn200_withMultipleSortFields() throws Exception {
-            mvc.perform(get("/api/drugs/search")
+            expectJsonOkResponse(mvc.perform(get("/api/drugs/search")
                             .param("sort", "drugName,desc")
                             .param("sort", "drugForm.name,asc")
-                            .param("size", "5"))
-                    .andExpect(status().isOk())
-                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON));
+                            .param("size", String.valueOf(TEST_PAGE_SIZE))));
         }
 
         @Test
         @DisplayName("GET /api/drugs/search -> 400 when month < 1")
         void search_shouldReturn400_whenMonthBelowMin() throws Exception {
-            mvc.perform(get("/api/drugs/search").param("expirationUntilMonth", "0"))
+            mvc.perform(get("/api/drugs/search")
+                            .param("expirationUntilMonth", String.valueOf(INVALID_MONTH_LOW)))
                     .andExpect(status().isBadRequest());
         }
     }
 
     @Nested
-    @DisplayName("UpdateDrugPutTests")
+    @DisplayName("Update Drug (PUT)")
     class UpdateDrugPutTests {
         @Test
         @DisplayName("PUT /api/drugs/{id} -> 204 when entity exists (seeded)")
         @Transactional
         void update_shouldReturn204_whenEntityExists_seeded() throws Exception {
             DrugFormEntity form = drugFormRepository.findAll().stream().findFirst().orElseThrow();
-            DrugEntity entity = DrugEntity.builder()
-                    .drugName("Update-Drug")
-                    .drugForm(form)
-                    .expirationDate(DateUtils.buildExpirationDate(OffsetDateTime.now().getYear() + 1, 12))
-                    .drugDescription("update test")
-                    .alertSent(false)
-                    .build();
-            DrugEntity saved = drugRepository.saveAndFlush(entity);
+            DrugEntity saved = createTestDrug("Update-Drug", "update test");
 
             String payload = """
                     {
                         "name": "Updated Name",
                         "form": "%s",
                         "expirationYear": %d,
-                        "expirationMonth": 12,
+                        "expirationMonth": %d,
                         "description": "Updated description"
                     }
-                    """.formatted(form.getName(), OffsetDateTime.now().getYear() + 2);
+                    """.formatted(form.getName(), FUTURE_YEAR + 1, DEFAULT_MONTH);
 
             mvc.perform(put("/api/drugs/{id}", saved.getDrugId())
                             .contentType(MediaType.APPLICATION_JSON)
@@ -443,14 +433,14 @@ class SmokeApiTest {
             String payload = """
                     {
                         "name": "Updated Name",
-                        "form": "PILLS",
+                        "form": "%s",
                         "expirationYear": %d,
-                        "expirationMonth": 12,
+                        "expirationMonth": %d,
                         "description": "Updated description"
                     }
-                    """.formatted(OffsetDateTime.now().getYear() + 2);
+                    """.formatted(FORM_PILLS, FUTURE_YEAR + 1, DEFAULT_MONTH);
 
-            mvc.perform(put("/api/drugs/{id}", 999999)
+            mvc.perform(put("/api/drugs/{id}", NONEXISTENT_DRUG_ID)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(payload))
                     .andExpect(status().isNotFound());
@@ -458,21 +448,13 @@ class SmokeApiTest {
     }
 
     @Nested
-    @DisplayName("DeleteDrugTests")
+    @DisplayName("Delete Drug (DELETE)")
     class DeleteDrugTests {
         @Test
         @DisplayName("DELETE /api/drugs/{id} -> 204 when entity exists (seeded)")
         @Transactional
         void delete_shouldReturn204_whenEntityExists_seeded() throws Exception {
-            DrugFormEntity form = drugFormRepository.findAll().stream().findFirst().orElseThrow();
-            DrugEntity entity = DrugEntity.builder()
-                    .drugName("Delete-Drug")
-                    .drugForm(form)
-                    .expirationDate(DateUtils.buildExpirationDate(OffsetDateTime.now().getYear() + 1, 12))
-                    .drugDescription("delete test")
-                    .alertSent(false)
-                    .build();
-            DrugEntity saved = drugRepository.saveAndFlush(entity);
+            DrugEntity saved = createTestDrug("Delete-Drug", "delete test");
 
             mvc.perform(delete("/api/drugs/{id}", saved.getDrugId()))
                     .andExpect(status().isNoContent());
@@ -481,7 +463,7 @@ class SmokeApiTest {
         @Test
         @DisplayName("DELETE /api/drugs/{id} -> 404 when entity not found")
         void delete_shouldReturn404_whenNotFound() throws Exception {
-            mvc.perform(delete("/api/drugs/{id}", 999999))
+            mvc.perform(delete("/api/drugs/{id}", NONEXISTENT_DRUG_ID))
                     .andExpect(status().isNotFound());
         }
     }

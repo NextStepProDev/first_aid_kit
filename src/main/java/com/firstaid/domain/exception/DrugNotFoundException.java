@@ -1,4 +1,4 @@
-package com.firstaid.controller.exception;
+package com.firstaid.domain.exception;
 
 public class DrugNotFoundException extends RuntimeException {
 

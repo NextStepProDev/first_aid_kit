@@ -1,0 +1,66 @@
+package com.firstaid.controller.auth;
+
+import com.firstaid.controller.dto.auth.JwtResponse;
+import com.firstaid.controller.dto.auth.LoginRequest;
+import com.firstaid.controller.dto.auth.RefreshTokenRequest;
+import com.firstaid.controller.dto.auth.RegisterRequest;
+import com.firstaid.service.AuthService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/auth")
+@RequiredArgsConstructor
+@Tag(name = "Authentication", description = "User authentication and registration endpoints")
+public class AuthController {
+
+    private final AuthService authService;
+
+    @PostMapping("/register")
+    @Operation(summary = "Register a new user", description = "Creates a new user account and returns JWT tokens")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "User registered successfully",
+                    content = @Content(schema = @Schema(implementation = JwtResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid input or user already exists")
+    })
+    public ResponseEntity<JwtResponse> register(@Valid @RequestBody RegisterRequest request) {
+        JwtResponse response = authService.register(request);
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/login")
+    @Operation(summary = "Login user", description = "Authenticates user credentials and returns JWT tokens")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Login successful",
+                    content = @Content(schema = @Schema(implementation = JwtResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Invalid credentials")
+    })
+    public ResponseEntity<JwtResponse> login(@Valid @RequestBody LoginRequest request) {
+        JwtResponse response = authService.login(request);
+        return ResponseEntity.ok(response);
+    }
+
+    @PostMapping("/refresh")
+    @Operation(summary = "Refresh access token", description = "Uses refresh token to generate a new access token")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Token refreshed successfully",
+                    content = @Content(schema = @Schema(implementation = JwtResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Invalid refresh token")
+    })
+    public ResponseEntity<JwtResponse> refreshToken(@Valid @RequestBody RefreshTokenRequest request) {
+        JwtResponse response = authService.refreshToken(request);
+        return ResponseEntity.ok(response);
+    }
+}

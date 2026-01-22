@@ -1,4 +1,4 @@
-package com.firstaid.controller.exception;
+package com.firstaid.controller.dto.error;
 
 import java.util.List;
 

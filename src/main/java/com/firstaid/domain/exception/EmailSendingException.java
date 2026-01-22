@@ -1,4 +1,4 @@
-package com.firstaid.controller.exception;
+package com.firstaid.domain.exception;
 
 public class EmailSendingException extends RuntimeException {
     public EmailSendingException(String message, Throwable cause) {

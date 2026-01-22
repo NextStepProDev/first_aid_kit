@@ -1,8 +1,13 @@
 package com.firstaid.slice.controller;
 
 import com.firstaid.config.NoSecurityConfig;
-import com.firstaid.controller.DrugController;
+import com.firstaid.config.TestCacheConfig;
+import com.firstaid.config.TestSecurityConfig;
+import com.firstaid.controller.drug.DrugController;
+import com.firstaid.infrastructure.cache.UserAwareCacheKeyGenerator;
 import com.firstaid.infrastructure.pdf.PdfExportService;
+import com.firstaid.infrastructure.security.JwtAuthenticationFilter;
+import com.firstaid.infrastructure.security.JwtTokenProvider;
 import com.firstaid.service.DrugService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -10,7 +15,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -24,20 +30,27 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(DrugController.class)
-@Import(NoSecurityConfig.class)
+@AutoConfigureMockMvc(addFilters = false)
+@Import({NoSecurityConfig.class, TestCacheConfig.class, TestSecurityConfig.class})
 public class DrugControllerValidationSliceTest {
 
     @Autowired
-    @SuppressWarnings("unused")
     private MockMvc mockMvc;
 
     @MockitoBean
-    @SuppressWarnings("unused")
     private DrugService drugService;
 
     @MockitoBean
-    @SuppressWarnings("unused")
     private PdfExportService pdfExportService;
+
+    @MockitoBean
+    private UserAwareCacheKeyGenerator userAwareCacheKeyGenerator;
+
+    @MockitoBean
+    private JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    @MockitoBean
+    private JwtTokenProvider jwtTokenProvider;
 
     static Stream<Arguments> invalidMonthProvider() {
         int currentMonth = OffsetDateTime.now().getMonthValue();
@@ -98,7 +111,8 @@ public class DrugControllerValidationSliceTest {
     @MethodSource("invalidMonthProvider")
     @DisplayName("Should return 201 for valid month and 400 for invalid month")
     void shouldReturnBadRequestForInvalidMonth(Boolean isValid, Integer month) throws Exception {
-        String json = buildJson("Ibuprofen", "PILLS", 2025, month, "lek przeciwbólowy");
+        int validYear = OffsetDateTime.now().getYear() + 1;
+        String json = buildJson("Ibuprofen", "PILLS", validYear, month, "lek przeciwbólowy");
         mockMvc.perform(
                         post("/api/drugs")
                                 .contentType(MediaType.APPLICATION_JSON)
@@ -124,7 +138,8 @@ public class DrugControllerValidationSliceTest {
     @MethodSource("invalidNameProvider")
     @DisplayName("Should return 201 for valid name and 400 for invalid name")
     void shouldReturnBadRequestForInvalidNames(Boolean isValid, String name) throws Exception {
-        String json = buildJson(name, "PILLS", 2025, 12, "lek przeciwbólowy");
+        int validYear = OffsetDateTime.now().getYear() + 1;
+        String json = buildJson(name, "PILLS", validYear, 12, "lek przeciwbólowy");
         mockMvc.perform(
                         post("/api/drugs")
                                 .contentType(MediaType.APPLICATION_JSON)
@@ -139,7 +154,8 @@ public class DrugControllerValidationSliceTest {
     @DisplayName("Should return 201 for valid form and 400 for invalid form")
         // slice test, czyli testujemy tylko kontroler
     void shouldReturnBadRequestForInvalidForm(boolean isValid, String form) throws Exception {
-        String json = buildJson("Ibuprofen", form, 2025, 12, "pain relief medication");
+        int validYear = OffsetDateTime.now().getYear() + 1;
+        String json = buildJson("Ibuprofen", form, validYear, 12, "pain relief medication");
         mockMvc.perform(
                         post("/api/drugs")
                                 .contentType(MediaType.APPLICATION_JSON)
@@ -152,7 +168,8 @@ public class DrugControllerValidationSliceTest {
     @MethodSource("invalidDescriptionProvider")
     @DisplayName("Should return 201 for valid description and 400 for invalid description")
     void shouldReturnBadRequestForInvalidDescription(Boolean isValid, String description) throws Exception {
-        String json = buildJson("Ibuprofen", "PILLS", 2025, 12, description);
+        int validYear = OffsetDateTime.now().getYear() + 1;
+        String json = buildJson("Ibuprofen", "PILLS", validYear, 12, description);
         mockMvc.perform(
                         post("/api/drugs")
                                 .contentType(MediaType.APPLICATION_JSON)
@@ -165,7 +182,8 @@ public class DrugControllerValidationSliceTest {
     @MethodSource("formBlankOrNullProvider")
     @DisplayName("Should return 400 for null or blank form values")
     void shouldReturnBadRequestForBlankOrNullForm(boolean isValid, String form) throws Exception {
-        String json = buildJson("Ibuprofen", form, 2025, 12, "Painkiller for fever");
+        int validYear = OffsetDateTime.now().getYear() + 1;
+        String json = buildJson("Ibuprofen", form, validYear, 12, "Painkiller for fever");
         mockMvc.perform(
                         post("/api/drugs")
                                 .contentType(MediaType.APPLICATION_JSON)
@@ -177,7 +195,8 @@ public class DrugControllerValidationSliceTest {
     @Test
     @DisplayName("Should return 201 for valid request")
     void shouldReturn201ForValidRequest() throws Exception {
-        String json = buildJson("Ibuprofen", "PILLS", 2025, 12,
+        int validYear = OffsetDateTime.now().getYear() + 1;
+        String json = buildJson("Ibuprofen", "PILLS", validYear, 12,
                 "pain relief medication");
         mockMvc.perform(post("/api/drugs")
                         .contentType(MediaType.APPLICATION_JSON)

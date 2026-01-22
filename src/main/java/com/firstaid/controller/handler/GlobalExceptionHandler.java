@@ -1,25 +1,30 @@
-package com.firstaid.controller.exception;
+package com.firstaid.controller.handler;
 
+import com.firstaid.controller.dto.error.ErrorMessage;
+import com.firstaid.controller.dto.error.FieldValidationError;
+import com.firstaid.controller.dto.error.ValidationErrorMessageDTO;
+import com.firstaid.domain.exception.DrugNotFoundException;
+import com.firstaid.domain.exception.EmailSendingException;
+import com.firstaid.domain.exception.InvalidSortFieldException;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.mapping.PropertyReferenceException;
+import org.springframework.data.core.PropertyReferenceException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import org.springframework.web.method.annotation.HandlerMethodValidationException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.time.OffsetDateTime;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestControllerAdvice
@@ -57,7 +62,6 @@ public class GlobalExceptionHandler {
 
     // Handles MethodArgumentTypeMismatchException when a method argument type does not match the expected type (e.g. 1,5 to Integer).
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
     @SuppressWarnings("unused")
     public ResponseEntity<ErrorMessage> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
         String message = String.format("Invalid value for parameter '%s': %s", ex.getName(), ex.getValue());
@@ -67,28 +71,6 @@ public class GlobalExceptionHandler {
                 .body(new ErrorMessage(400, message));
     }
 
-    // Handles HandlerMethodValidationException when a method argument validation fails.
-    @ExceptionHandler(HandlerMethodValidationException.class)
-    @SuppressWarnings({"unused", "removal"})
-    public ResponseEntity<ErrorMessage> handleHandlerMethodValidationException(HandlerMethodValidationException ex) {
-        // Build concise, user-friendly message per invalid parameter
-        var parts = ex.getAllValidationResults().stream()
-                .flatMap(r -> r.getResolvableErrors().stream()
-                        .map(err -> {
-                            String param = r.getMethodParameter().getParameterName();
-                            String msg = err.getDefaultMessage();
-                            if (msg == null || msg.isBlank()) {
-                                msg = err.toString();
-                            }
-                            return param + ": " + msg;
-                        }))
-                .toList();
-
-        String message = parts.isEmpty() ? ex.getMessage() : String.join("; ", parts);
-        log.warn("Handler method validation error(s): {}", message);
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(new ErrorMessage(400, message));
-    }
 
     @ExceptionHandler(DrugNotFoundException.class)
     @SuppressWarnings("unused")
@@ -99,9 +81,10 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     @SuppressWarnings("unused")
-    public ResponseEntity<String> handleGeneralException(Exception ex) {
+    public ResponseEntity<ErrorMessage> handleGeneralException(Exception ex) {
         log.error("Unhandled exception", ex);
-        return new ResponseEntity<>("An error occurred", HttpStatus.INTERNAL_SERVER_ERROR);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ErrorMessage(500, "An unexpected error occurred"));
     }
 
 
@@ -114,18 +97,11 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
     @SuppressWarnings("unused")
-    public Map<String, Object> handleHttpMessageNotReadable(HttpMessageNotReadableException ex) {
+    public ResponseEntity<ErrorMessage> handleHttpMessageNotReadable(HttpMessageNotReadableException ex) {
         log.warn("Malformed JSON request: {}", ex.getMessage());
-
-        Map<String, Object> response = new LinkedHashMap<>();
-        response.put("error", "Malformed JSON");
-        response.put("message", "Request body is invalid or unreadable");
-        response.put("status", HttpStatus.BAD_REQUEST.value());
-        response.put("timestamp", OffsetDateTime.now().toString());
-
-        return response;
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorMessage(400, "Request body is invalid or unreadable"));
     }
 
     // Handles IllegalArgumentException when an invalid argument is passed to a method.
@@ -194,5 +170,37 @@ public class GlobalExceptionHandler {
         log.warn("No resource found: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(new ErrorMessage(404, "Resource not found"));
+    }
+
+    @ExceptionHandler(BadCredentialsException.class)
+    @SuppressWarnings("unused")
+    public ResponseEntity<ErrorMessage> handleBadCredentials(BadCredentialsException ex) {
+        log.warn("Bad credentials: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new ErrorMessage(401, ex.getMessage()));
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    @SuppressWarnings("unused")
+    public ResponseEntity<ErrorMessage> handleAuthenticationException(AuthenticationException ex) {
+        log.warn("Authentication failed: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new ErrorMessage(401, "Authentication failed"));
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    @SuppressWarnings("unused")
+    public ResponseEntity<ErrorMessage> handleAccessDenied(AccessDeniedException ex) {
+        log.warn("Access denied: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new ErrorMessage(403, "Access denied - insufficient permissions"));
+    }
+
+    @ExceptionHandler(IllegalStateException.class)
+    @SuppressWarnings("unused")
+    public ResponseEntity<ErrorMessage> handleIllegalStateException(IllegalStateException ex) {
+        log.warn("Illegal state: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ErrorMessage(500, "An unexpected error occurred"));
     }
 }

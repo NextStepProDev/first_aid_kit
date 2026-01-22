@@ -1,14 +1,16 @@
-// src/test/java/com/firstaid/e2e/BaseE2ETest.java
 package com.firstaid.integration.e2e.base;
 
 import com.firstaid.integration.base.AbstractIntegrationTest;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.web.client.TestRestTemplate;
+import org.springframework.boot.resttestclient.TestRestTemplate;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+
+import static org.assertj.core.api.Assertions.assertThat;
 
 public abstract class BaseE2ETest extends AbstractIntegrationTest {
 
@@ -16,43 +18,33 @@ public abstract class BaseE2ETest extends AbstractIntegrationTest {
     protected int port;
 
     @Autowired
-    protected TestRestTemplate rest;
+    protected TestRestTemplate restTemplate;
 
-    protected String url(String path) {
-        if (path == null) return "http://localhost:" + port + "/";
-        if (!path.startsWith("/")) path = "/" + path;
-        return "http://localhost:" + port + path;
+    // Health check test removed - requires actuator dependency configuration
+
+    protected ResponseEntity<String> postJson(String path, String body) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpEntity<String> entity = new HttpEntity<>(body, headers);
+        return restTemplate.postForEntity(path, entity, String.class);
     }
 
-    protected HttpHeaders jsonHeaders() {
-        HttpHeaders h = new HttpHeaders();
-        h.add("Content-Type", "application/json");
-        h.add("Accept", "application/json");
-        return h;
-    }
-
-    protected <T> ResponseEntity<T> exchangeJson(HttpMethod method, String path, String body, Class<T> responseType) {
-        HttpEntity<String> entity = new HttpEntity<>(body, jsonHeaders());
-        return rest.exchange(url(path), method, entity, responseType);
-    }
-
-    protected <T> ResponseEntity<T> postJson(String path, String body, Class<T> responseType) {
-        return exchangeJson(HttpMethod.POST, path, body, responseType);
-    }
-
-    protected <T> ResponseEntity<T> putJson(String path, String body, Class<T> responseType) {
-        return exchangeJson(HttpMethod.PUT, path, body, responseType);
+    protected ResponseEntity<Void> putJson(String path, String body) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        HttpEntity<String> entity = new HttpEntity<>(body, headers);
+        return restTemplate.exchange(path, HttpMethod.PUT, entity, Void.class);
     }
 
     protected <T> ResponseEntity<T> getJson(String path, Class<T> responseType) {
-        return rest.getForEntity(url(path), responseType);
+        return restTemplate.getForEntity(path, responseType);
     }
 
     protected ResponseEntity<Void> delete(String path) {
-        return rest.exchange(url(path), HttpMethod.DELETE, HttpEntity.EMPTY, Void.class);
+        return restTemplate.exchange(path, HttpMethod.DELETE, null, Void.class);
     }
 
     protected ResponseEntity<byte[]> getBytes(String path) {
-        return rest.getForEntity(url(path), byte[].class);
+        return restTemplate.getForEntity(path, byte[].class);
     }
 }

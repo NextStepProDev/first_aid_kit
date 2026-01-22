@@ -27,6 +27,10 @@ public class DrugEntity {
     @JoinColumn(name = "drug_form_id", nullable = false)
     private DrugFormEntity drugForm;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "user_id", nullable = false)
+    private UserEntity owner;
+
     @Column(name = "expiration_date")
     private OffsetDateTime expirationDate;
 

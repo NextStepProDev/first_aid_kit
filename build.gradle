@@ -10,7 +10,7 @@ version = '0.2.0-SNAPSHOT'
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
+        languageVersion = JavaLanguageVersion.of(25)
     }
 }
 
@@ -24,18 +24,18 @@ repositories {
     mavenCentral()
 }
 
-dependencyManagement {
-    imports {
-        mavenBom "org.testcontainers:testcontainers-bom:${testcontainersVersion}"
-    }
-}
+// NOTE: do NOT put gradle properties (versions) in this file.
+// Put them in gradle.properties (project root).
 
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     implementation 'org.springframework.boot:spring-boot-starter-thymeleaf'
     implementation 'org.springframework.boot:spring-boot-starter-web'
+    implementation 'org.springframework.boot:spring-boot-starter-webmvc'
     implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-cache'
+
     implementation 'org.flywaydb:flyway-core'
     implementation 'org.flywaydb:flyway-database-postgresql'
     runtimeOnly 'org.postgresql:postgresql'
@@ -50,6 +50,11 @@ dependencies {
 
     implementation 'org.springframework.boot:spring-boot-starter-mail'
 
+    // JWT support
+    implementation "io.jsonwebtoken:jjwt-api:${jjwtVersion}"
+    runtimeOnly "io.jsonwebtoken:jjwt-impl:${jjwtVersion}"
+    runtimeOnly "io.jsonwebtoken:jjwt-jackson:${jjwtVersion}"
+
     implementation "org.mapstruct:mapstruct:${mapstructVersion}"
     annotationProcessor "org.mapstruct:mapstruct-processor:${mapstructVersion}"
     implementation "org.projectlombok:lombok-mapstruct-binding:${lombokMapstructBindingVersion}"
@@ -57,12 +62,20 @@ dependencies {
 
     testCompileOnly 'org.projectlombok:lombok'
     testAnnotationProcessor 'org.projectlombok:lombok'
-    testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.boot:spring-boot-starter-restclient-test'
+    testImplementation 'org.springframework.boot:spring-boot-resttestclient'
+
+    testImplementation 'org.springframework.boot:spring-boot-webmvc-test'
     testImplementation 'org.springframework.boot:spring-boot-testcontainers'
-    testImplementation 'org.testcontainers:junit-jupiter'
-    testImplementation 'org.testcontainers:postgresql'
+
+    // Import Testcontainers BOM (platform) BEFORE declaring testcontainers artifacts
+    testImplementation platform("org.testcontainers:testcontainers-bom:${testcontainersVersion}")
+
+    testImplementation 'org.testcontainers:testcontainers-junit-jupiter'
+    testImplementation 'org.testcontainers:testcontainers-postgresql'
 }
 
 tasks.named('test') {
@@ -71,7 +84,16 @@ tasks.named('test') {
 
 test {
     useJUnitPlatform()
-    jvmArgs "-javaagent:${classpath.find { it.name.contains('byte-buddy-agent') }?.path}"
+
+    // nie rozwiązujemy classpath w konfiguracji — dopiero przy uruchomieniu testu
+    doFirst {
+        def agentFile = configurations.testRuntimeClasspath.files.find { it.name.contains('byte-buddy-agent') }
+        if (agentFile) {
+            // dodajemy javaagent dopiero na etapie wykonania zadania
+            jvmArgs = (jvmArgs ?: []) + ["-javaagent:${agentFile.absolutePath}"]
+        }
+    }
+
     systemProperty "spring.profiles.active", "test"
     testLogging {
         events "passed", "skipped", "failed"
@@ -80,9 +102,8 @@ test {
 
 compileJava.options.encoding = 'UTF-8'
 
-
 jacoco {
-    toolVersion = "0.8.11"
+    toolVersion = "0.8.13"
 }
 
 jacocoTestReport {

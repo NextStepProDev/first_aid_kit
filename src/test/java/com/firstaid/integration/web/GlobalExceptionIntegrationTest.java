@@ -2,20 +2,25 @@ package com.firstaid.integration.web;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.firstaid.config.NoSecurityConfig;
-import com.firstaid.controller.DrugController;
+import com.firstaid.config.TestCacheConfig;
+import com.firstaid.config.TestSecurityConfig;
+import com.firstaid.controller.drug.DrugController;
 import com.firstaid.controller.alert.AlertController;
-import com.firstaid.controller.exception.DrugNotFoundException;
-import com.firstaid.controller.exception.EmailSendingException;
-import com.firstaid.controller.exception.GlobalExceptionHandler;
-import com.firstaid.controller.exception.InvalidSortFieldException;
-import com.firstaid.infrastructure.email.EmailService;
+import com.firstaid.controller.handler.GlobalExceptionHandler;
+import com.firstaid.domain.exception.DrugNotFoundException;
+import com.firstaid.domain.exception.EmailSendingException;
+import com.firstaid.domain.exception.InvalidSortFieldException;
+import com.firstaid.infrastructure.cache.UserAwareCacheKeyGenerator;
 import com.firstaid.infrastructure.pdf.PdfExportService;
+import com.firstaid.infrastructure.security.JwtAuthenticationFilter;
+import com.firstaid.infrastructure.security.JwtTokenProvider;
 import com.firstaid.service.DrugService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.domain.Page;
 import org.springframework.http.MediaType;
@@ -36,7 +41,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(controllers = {DrugController.class, AlertController.class})
-@Import({GlobalExceptionHandler.class, NoSecurityConfig.class})
+@AutoConfigureMockMvc(addFilters = false)
+@Import({GlobalExceptionHandler.class, NoSecurityConfig.class, TestCacheConfig.class, TestSecurityConfig.class})
 public class GlobalExceptionIntegrationTest {
 
     static int CURRENT_YEAR = OffsetDateTime.now().getYear();
@@ -60,7 +66,15 @@ public class GlobalExceptionIntegrationTest {
 
     @MockitoBean
     @SuppressWarnings("unused")
-    private EmailService emailService;
+    private UserAwareCacheKeyGenerator userAwareCacheKeyGenerator;
+
+    @MockitoBean
+    @SuppressWarnings("unused")
+    private JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    @MockitoBean
+    @SuppressWarnings("unused")
+    private JwtTokenProvider jwtTokenProvider;
 
     @Nested
     @DisplayName("Validation errors (@Valid DTO)")
@@ -158,7 +172,7 @@ public class GlobalExceptionIntegrationTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(malformedJson))
                     .andExpect(status().isBadRequest())
-                    .andExpect(jsonPath("$.error").value("Malformed JSON"))
+                    .andExpect(jsonPath("$.status").value(400))
                     .andExpect(jsonPath("$.message").value("Request body is invalid or unreadable"));
         }
     }
@@ -299,7 +313,7 @@ public class GlobalExceptionIntegrationTest {
         @Test
         void shouldReturn500WhenEmailSendingFails() throws Exception {
             // Arrange: when alert endpoint triggers service, throw EmailSendingException
-            willThrow(new EmailSendingException("boom")).given(drugService).sendDefaultExpiryAlertEmails();
+            willThrow(new EmailSendingException("boom")).given(drugService).sendDefaultExpiryAlertEmailsForCurrentUser();
 
             mockMvc.perform(post("/api/email/alert"))
                     .andExpect(status().isInternalServerError())

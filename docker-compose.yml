@@ -29,6 +29,8 @@ services:
   app:
     build: .
     container_name: first_aid_kit_spring-app
+    volumes:
+      - spring-app-data:/app/data
     depends_on:
       - postgres
     ports:
@@ -40,9 +42,11 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       MAIL_USERNAME: ${MAIL_USERNAME}
       MAIL_PASSWORD: ${MAIL_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
     networks:
       - default
 
 volumes:
   postgres_data:
     name: first_aid_kit_postgres_data
+  spring-app-data:

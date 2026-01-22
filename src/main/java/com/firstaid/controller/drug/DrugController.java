@@ -1,9 +1,10 @@
-package com.firstaid.controller;
+package com.firstaid.controller.drug;
 
 import com.firstaid.controller.dto.*;
 import com.firstaid.infrastructure.pdf.PdfExportService;
 import com.firstaid.service.DrugService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
@@ -31,6 +32,7 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/drugs")
 @RequiredArgsConstructor
 @Validated
+@SecurityRequirement(name = "bearerAuth")
 public class DrugController {
 
     private final DrugService drugService;
@@ -42,7 +44,6 @@ public class DrugController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Get drug by ID", description = "Returns a drug by its ID or 404 if not found")
-    @SuppressWarnings("unused")
     public DrugDTO getDrugById(@PathVariable @Min(value = 1, message = "ID must be >= 1") Integer id) {
         log.info("Fetching drug with ID: {}", id);
         return drugService.getDrugById(id);
@@ -50,7 +51,6 @@ public class DrugController {
 
     @PostMapping
     @Operation(summary = "Add new drug", description = "Adds a new drug to the database")
-    @SuppressWarnings("unused")
     public ResponseEntity<DrugDTO> addDrug(@RequestBody @Valid DrugRequestDTO dto) {
         log.info("Adding new drug with name: {}", dto.getName());
         DrugDTO addedDrug = drugService.addNewDrug(dto);
@@ -61,7 +61,6 @@ public class DrugController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete drug by ID", description = "Deletes a drug from the database by its ID")
-    @SuppressWarnings("unused")
     public ResponseEntity<Void> deleteDrug(@PathVariable Integer id) {
         log.info("Deleting drug with ID: {}", id);
         drugService.deleteDrug(id);
@@ -70,7 +69,6 @@ public class DrugController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Update drug by ID", description = "Updates an existing drug using the given ID and data")
-    @SuppressWarnings("unused")
     public ResponseEntity<Void> updateDrug(@PathVariable Integer id, @Valid @RequestBody DrugRequestDTO dto) {
         log.info("Updating drug with ID: {}", id);
         drugService.updateDrug(id, dto);
@@ -80,7 +78,6 @@ public class DrugController {
 
     @GetMapping("/forms")
     @Operation(summary = "Get drug forms", description = "Returns a list of all available drug forms (enum values)")
-    @SuppressWarnings("unused")
     public List<FormOption> getAvailableDrugForms() {
         return Arrays.stream(DrugFormDTO.values())
                 .map(f -> new FormOption(f.name().toLowerCase(), f.getLabel()))
@@ -90,7 +87,6 @@ public class DrugController {
     @GetMapping("/forms/dictionary")
     @Operation(summary = "Get drug form labels", description = "Returns a map of drug form enum values and their " +
             "labels")
-    @SuppressWarnings("unused")
     public Map<String, String> getDrugsFormsDictionary() {
         log.info("Fetching drug form labels");
         return Arrays.stream(DrugFormDTO.values()).collect(Collectors.toMap(Enum::name, DrugFormDTO::getLabel));
@@ -108,7 +104,6 @@ public class DrugController {
                     ⚠️ PDF generation is limited to 100 records for performance reasons. Use filters to narrow down the dataset.
                     """
     )
-    @SuppressWarnings("unused")
     public ResponseEntity<byte[]> exportDrugsToPdf(
             @RequestParam(required = false) String name,
             @RequestParam(required = false) String form,
@@ -142,7 +137,6 @@ public class DrugController {
     @GetMapping("/statistics")
     @Operation(summary = "Retrieve drug statistics", description = "Returns statistics including total, expired, " +
             "active drugs, alerts sent, and a breakdown by form")
-    @SuppressWarnings("unused")
     public ResponseEntity<DrugStatisticsDTO> getDrugStatistics() {
         log.info("Fetching drug statistics");
         DrugStatisticsDTO stats = drugService.getDrugStatistics();
@@ -166,7 +160,6 @@ public class DrugController {
     - Maximum page size for /search: 100
     """
     )
-    @SuppressWarnings("unused")
     public Page<DrugDTO> searchDrugs(
         @RequestParam(required = false) String name,
         @RequestParam(required = false) String form,

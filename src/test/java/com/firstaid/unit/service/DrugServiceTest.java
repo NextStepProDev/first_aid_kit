@@ -4,16 +4,20 @@ import com.firstaid.controller.dto.DrugDTO;
 import com.firstaid.controller.dto.DrugFormDTO;
 import com.firstaid.controller.dto.DrugRequestDTO;
 import com.firstaid.controller.dto.DrugStatisticsDTO;
-import com.firstaid.controller.exception.DrugNotFoundException;
-import com.firstaid.controller.exception.EmailSendingException;
+import com.firstaid.domain.exception.DrugNotFoundException;
+import com.firstaid.domain.exception.EmailSendingException;
 import com.firstaid.infrastructure.database.entity.DrugEntity;
 import com.firstaid.infrastructure.database.entity.DrugFormEntity;
+import com.firstaid.infrastructure.database.entity.UserEntity;
 import com.firstaid.infrastructure.database.mapper.DrugMapper;
 import com.firstaid.infrastructure.database.repository.DrugRepository;
+import com.firstaid.infrastructure.database.repository.UserRepository;
 import com.firstaid.infrastructure.email.EmailService;
+import com.firstaid.infrastructure.security.CurrentUserService;
 import com.firstaid.infrastructure.util.DateUtils;
 import com.firstaid.service.DrugFormService;
 import com.firstaid.service.DrugService;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -25,7 +29,6 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -42,6 +45,9 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class DrugServiceTest {
 
+    private static final Integer TEST_USER_ID = 1;
+    private static final String TEST_USER_EMAIL = "test@example.com";
+
     @Mock
     private DrugRepository drugRepository;
     @Mock
@@ -50,28 +56,38 @@ class DrugServiceTest {
     private DrugMapper drugMapper;
     @Mock
     private EmailService emailService;
+    @Mock
+    private CurrentUserService currentUserService;
+    @Mock
+    private UserRepository userRepository;
 
     @InjectMocks private DrugService drugService;
 
     static int YEAR_NOW_PLUS_1 = OffsetDateTime.now().plusYears(1).getYear();
+
+    @BeforeEach
+    void setUp() {
+        // Set up default user context for all tests
+        lenient().when(currentUserService.getCurrentUserId()).thenReturn(TEST_USER_ID);
+        lenient().when(currentUserService.getCurrentUserEmail()).thenReturn(TEST_USER_EMAIL);
+        lenient().when(userRepository.findByUserId(TEST_USER_ID))
+                .thenReturn(Optional.of(UserEntity.builder().userId(TEST_USER_ID).email(TEST_USER_EMAIL).build()));
+    }
 
     // ---------------------- getDrugById ----------------------
     @Nested @DisplayName("getDrugById")
     class GetDrugById {
         @Test
         void shouldThrowWhenNotFound() {
-            when(drugRepository.findById(999)).thenReturn(Optional.empty());
+            when(drugRepository.findByDrugIdAndOwnerUserId(999, TEST_USER_ID)).thenReturn(Optional.empty());
             assertThrows(DrugNotFoundException.class, () -> drugService.getDrugById(999));
-            ArgumentCaptor<Integer> captor = ArgumentCaptor.forClass(Integer.class);
-            verify(drugRepository).findById(captor.capture());
-            assertThat(captor.getValue()).isEqualTo(999);
-            verify(drugRepository).findById(999);
+            verify(drugRepository).findByDrugIdAndOwnerUserId(999, TEST_USER_ID);
         }
         @Test
         void shouldReturnDTO() {
             DrugEntity e = DrugEntity.builder().drugId(1).drugName("Aspirin").build();
             DrugDTO dto = DrugDTO.builder().drugId(1).drugName("Aspirin").build();
-            when(drugRepository.findById(1)).thenReturn(Optional.of(e));
+            when(drugRepository.findByDrugIdAndOwnerUserId(1, TEST_USER_ID)).thenReturn(Optional.of(e));
             when(drugMapper.mapToDTO(e)).thenReturn(dto);
             assertThat(drugService.getDrugById(1)).isEqualTo(dto);
             verify(drugMapper).mapToDTO(e);
@@ -134,13 +150,13 @@ class DrugServiceTest {
         @Test
         void shouldDeleteWhenExists() {
             DrugEntity e = DrugEntity.builder().drugId(5).build();
-            when(drugRepository.findById(5)).thenReturn(Optional.of(e));
+            when(drugRepository.findByDrugIdAndOwnerUserId(5, TEST_USER_ID)).thenReturn(Optional.of(e));
             drugService.deleteDrug(5);
             verify(drugRepository).delete(e);
         }
         @Test
         void shouldThrowWhenMissing() {
-            when(drugRepository.findById(5)).thenReturn(Optional.empty());
+            when(drugRepository.findByDrugIdAndOwnerUserId(5, TEST_USER_ID)).thenReturn(Optional.empty());
             assertThrows(DrugNotFoundException.class, () -> drugService.deleteDrug(5));
             verify(drugRepository, never()).delete(any(DrugEntity.class));
         }
@@ -152,7 +168,7 @@ class DrugServiceTest {
         @Test
         void shouldUpdateFieldsAndSave() {
             DrugEntity existing = DrugEntity.builder().drugId(3).drugName("Old").build();
-            when(drugRepository.findById(3)).thenReturn(Optional.of(existing));
+            when(drugRepository.findByDrugIdAndOwnerUserId(3, TEST_USER_ID)).thenReturn(Optional.of(existing));
             DrugFormEntity form = DrugFormEntity.builder().id(2).name("PILLS").build();
             when(drugFormService.resolve(DrugFormDTO.PILLS)).thenReturn(form);
 
@@ -172,14 +188,14 @@ class DrugServiceTest {
         }
         @Test
         void shouldThrowWhenNotFound() {
-            when(drugRepository.findById(77)).thenReturn(Optional.empty());
+            when(drugRepository.findByDrugIdAndOwnerUserId(77, TEST_USER_ID)).thenReturn(Optional.empty());
             assertThrows(DrugNotFoundException.class, () -> drugService.updateDrug(77, new DrugRequestDTO()));
         }
 
         @Test
         void shouldThrow_whenFormIsNull_onUpdate() {
             DrugEntity existing = DrugEntity.builder().drugId(3).drugName("Old").build();
-            when(drugRepository.findById(3)).thenReturn(Optional.of(existing));
+            when(drugRepository.findByDrugIdAndOwnerUserId(3, TEST_USER_ID)).thenReturn(Optional.of(existing));
 
             DrugRequestDTO req = new DrugRequestDTO("New", null, YEAR_NOW_PLUS_1, 1, "Desc");
 
@@ -195,7 +211,7 @@ class DrugServiceTest {
         void shouldThrow_whenFormIsInvalid_onUpdate() {
             // given
             DrugEntity existing = DrugEntity.builder().drugId(3).drugName("Old").build();
-            when(drugRepository.findById(3)).thenReturn(Optional.of(existing));
+            when(drugRepository.findByDrugIdAndOwnerUserId(3, TEST_USER_ID)).thenReturn(Optional.of(existing));
             DrugRequestDTO req = new DrugRequestDTO("New", "XYZ", YEAR_NOW_PLUS_1, 1, "Desc");
 
             // when + then
@@ -212,37 +228,26 @@ class DrugServiceTest {
     @Nested @DisplayName("sendExpiryAlertEmails")
     class SendExpiryAlerts {
         @Test
-        void shouldSkipWhenNoRecipientConfigured() {
-            // default: alertRecipientEmail is blank -> nothing happens
-            OffsetDateTime end = DateUtils.buildExpirationDate(YEAR_NOW_PLUS_1, 8);
-            when(drugRepository.findByExpirationDateLessThanEqualAndAlertSentFalse(end)).thenReturn(List.of(
-                    DrugEntity.builder().drugId(1).drugName("A").expirationDate(end).alertSent(false).build()
-            ));
-            drugService.sendExpiryAlertEmails(YEAR_NOW_PLUS_1, 8);
-            verifyNoInteractions(emailService);
-            verify(drugRepository, never()).save(any(DrugEntity.class));
-        }
-        @Test
         void shouldSendAndMarkAlertSent() {
-            ReflectionTestUtils.setField(drugService, "alertRecipientEmail", "user@example.com");
             OffsetDateTime end = DateUtils.buildExpirationDate(YEAR_NOW_PLUS_1, 8);
             DrugEntity d = DrugEntity.builder().drugId(1).drugName("Old Drug").expirationDate(end).alertSent(false).build();
-            when(drugRepository.findByExpirationDateLessThanEqualAndAlertSentFalse(end)).thenReturn(List.of(d));
+            when(drugRepository.findByOwnerUserIdAndExpirationDateLessThanEqualAndAlertSentFalse(TEST_USER_ID, end))
+                    .thenReturn(List.of(d));
             when(drugRepository.save(any(DrugEntity.class))).thenAnswer(inv -> inv.getArgument(0));
 
-            drugService.sendExpiryAlertEmails(YEAR_NOW_PLUS_1, 8);
+            drugService.sendExpiryAlertEmailsForCurrentUser(YEAR_NOW_PLUS_1, 8);
 
-            verify(emailService).sendEmail(eq("user@example.com"), anyString(), anyString());
+            verify(emailService).sendEmail(eq(TEST_USER_EMAIL), anyString(), anyString());
             verify(drugRepository).save(argThat(DrugEntity::isAlertSent));
         }
         @Test
         void shouldWrapAndPropagateWhenEmailFails() {
-            ReflectionTestUtils.setField(drugService, "alertRecipientEmail", "user@example.com");
             OffsetDateTime end = DateUtils.buildExpirationDate(YEAR_NOW_PLUS_1, 8);
             DrugEntity d = DrugEntity.builder().drugId(1).drugName("X").expirationDate(end).alertSent(false).build();
-            when(drugRepository.findByExpirationDateLessThanEqualAndAlertSentFalse(end)).thenReturn(List.of(d));
+            when(drugRepository.findByOwnerUserIdAndExpirationDateLessThanEqualAndAlertSentFalse(TEST_USER_ID, end))
+                    .thenReturn(List.of(d));
             doThrow(new RuntimeException("smtp fail")).when(emailService).sendEmail(anyString(), anyString(), anyString());
-            assertThatThrownBy(() -> drugService.sendExpiryAlertEmails(YEAR_NOW_PLUS_1, 8))
+            assertThatThrownBy(() -> drugService.sendExpiryAlertEmailsForCurrentUser(YEAR_NOW_PLUS_1, 8))
                     .isInstanceOf(EmailSendingException.class)
                     .hasMessageContaining("Could not send email alert for drug");
             verify(drugRepository, never()).save(any(DrugEntity.class));
@@ -250,15 +255,14 @@ class DrugServiceTest {
         @Test
         void defaultVariantShouldDelegateToMonthAhead() {
             DrugService spy = Mockito.spy(drugService);
-            doNothing().when(spy).sendExpiryAlertEmails(anyInt(), anyInt());
-            spy.sendDefaultExpiryAlertEmails();
-            verify(spy).sendExpiryAlertEmails(anyInt(), anyInt());
+            doNothing().when(spy).sendExpiryAlertEmailsForCurrentUser(anyInt(), anyInt());
+            spy.sendDefaultExpiryAlertEmailsForCurrentUser();
+            verify(spy).sendExpiryAlertEmailsForCurrentUser(anyInt(), anyInt());
         }
 
         @Test
         void shouldSkipAlreadyAlertedDrugs() {
             // given
-            ReflectionTestUtils.setField(drugService, "alertRecipientEmail", "user@example.com");
             OffsetDateTime end = DateUtils.buildExpirationDate(YEAR_NOW_PLUS_1, 8);
             DrugEntity alreadyAlerted = DrugEntity.builder()
                     .drugId(9)
@@ -270,11 +274,11 @@ class DrugServiceTest {
 
             // Although the repository method name implies alertSent=false, we purposely return a true value
             // to exercise the defensive else-branch in the service.
-            when(drugRepository.findByExpirationDateLessThanEqualAndAlertSentFalse(end))
+            when(drugRepository.findByOwnerUserIdAndExpirationDateLessThanEqualAndAlertSentFalse(TEST_USER_ID, end))
                     .thenReturn(List.of(alreadyAlerted));
 
             // when
-            drugService.sendExpiryAlertEmails(YEAR_NOW_PLUS_1, 8);
+            drugService.sendExpiryAlertEmailsForCurrentUser(YEAR_NOW_PLUS_1, 8);
 
             // then
             verify(emailService, never()).sendEmail(anyString(), anyString(), anyString());
@@ -287,10 +291,10 @@ class DrugServiceTest {
     class GetDrugStatistics {
         @Test
         void shouldReturnAggregates() {
-            when(drugRepository.count()).thenReturn(10L);
-            when(drugRepository.countByExpirationDateBefore(any())).thenReturn(4L);
-            when(drugRepository.countByAlertSentTrue()).thenReturn(3L);
-            when(drugRepository.countGroupedByForm()).thenReturn(List.of(new Object[]{"PILLS", 6L}, new Object[]{"GEL", 1L}));
+            when(drugRepository.countByOwnerUserId(TEST_USER_ID)).thenReturn(10L);
+            when(drugRepository.countByOwnerUserIdAndExpirationDateBefore(eq(TEST_USER_ID), any())).thenReturn(4L);
+            when(drugRepository.countByOwnerUserIdAndAlertSentTrue(TEST_USER_ID)).thenReturn(3L);
+            when(drugRepository.countGroupedByFormAndUserId(TEST_USER_ID)).thenReturn(List.of(new Object[]{"PILLS", 6L}, new Object[]{"GEL", 1L}));
             DrugStatisticsDTO s = drugService.getDrugStatistics();
             assertThat(s.getTotalDrugs()).isEqualTo(10);
             assertThat(s.getExpiredDrugs()).isEqualTo(4);
@@ -301,10 +305,10 @@ class DrugServiceTest {
 
         @Test
         void shouldIgnoreNullsInGroupedData() {
-            when(drugRepository.count()).thenReturn(5L);
-            when(drugRepository.countByExpirationDateBefore(any())).thenReturn(1L);
-            when(drugRepository.countByAlertSentTrue()).thenReturn(0L);
-            when(drugRepository.countGroupedByForm()).thenReturn(List.of(
+            when(drugRepository.countByOwnerUserId(TEST_USER_ID)).thenReturn(5L);
+            when(drugRepository.countByOwnerUserIdAndExpirationDateBefore(eq(TEST_USER_ID), any())).thenReturn(1L);
+            when(drugRepository.countByOwnerUserIdAndAlertSentTrue(TEST_USER_ID)).thenReturn(0L);
+            when(drugRepository.countGroupedByFormAndUserId(TEST_USER_ID)).thenReturn(List.of(
                     new Object[]{"PILLS", 2L},
                     new Object[]{null, 3L},
                     new Object[]{"GEL", null}

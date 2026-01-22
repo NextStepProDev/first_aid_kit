@@ -22,7 +22,6 @@ public class FirstAidKitApplication implements CommandLineRunner {
     }
 
     @PreDestroy
-    @SuppressWarnings("unused")
     public void onExit() {
         log.info("FirstAidKitApplication is shutting down.");
     }

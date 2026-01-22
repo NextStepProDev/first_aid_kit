@@ -4,11 +4,18 @@ import com.firstaid.infrastructure.database.entity.UserEntity;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
-@Repository
-public interface UserRepository extends JpaRepository<UserEntity, Long> {
+import java.util.Optional;
 
-    @SuppressWarnings("unused")
+@Repository
+public interface UserRepository extends JpaRepository<UserEntity, Integer> {
+
     UserEntity findByEmail(String email);
+
     UserEntity findByUserName(String userName);
 
+    Optional<UserEntity> findByUserId(Integer userId);
+
+    boolean existsByUserName(String userName);
+
+    boolean existsByEmail(String email);
 }
