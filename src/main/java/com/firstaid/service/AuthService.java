@@ -1,22 +1,29 @@
 package com.firstaid.service;
 
+import com.firstaid.controller.dto.auth.DeleteAccountRequest;
 import com.firstaid.controller.dto.auth.JwtResponse;
 import com.firstaid.controller.dto.auth.LoginRequest;
 import com.firstaid.controller.dto.auth.RefreshTokenRequest;
 import com.firstaid.controller.dto.auth.RegisterRequest;
+import com.firstaid.domain.exception.InvalidPasswordException;
 import com.firstaid.infrastructure.database.entity.RoleEntity;
 import com.firstaid.infrastructure.database.entity.UserEntity;
+import com.firstaid.infrastructure.database.repository.DrugRepository;
 import com.firstaid.infrastructure.database.repository.RoleRepository;
 import com.firstaid.infrastructure.database.repository.UserRepository;
+import com.firstaid.infrastructure.email.EmailService;
+import com.firstaid.infrastructure.security.CurrentUserService;
 import com.firstaid.infrastructure.security.CustomUserDetails;
 import com.firstaid.infrastructure.security.CustomUserDetailService;
 import com.firstaid.infrastructure.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -32,8 +39,11 @@ public class AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
     private final RoleRepository roleRepository;
+    private final DrugRepository drugRepository;
     private final PasswordEncoder passwordEncoder;
     private final CustomUserDetailService userDetailService;
+    private final CurrentUserService currentUserService;
+    private final EmailService emailService;
 
     public JwtResponse login(LoginRequest request) {
         try {
@@ -85,6 +95,8 @@ public class AuthService {
         UserEntity savedUser = userRepository.save(user);
         log.info("New user registered: {}", savedUser.getUserName());
 
+        sendWelcomeEmail(savedUser);
+
         // Auto-login after registration
         return login(LoginRequest.builder()
                 .email(request.getEmail())
@@ -117,5 +129,60 @@ public class AuthService {
                 userDetails.getUsername(),
                 userDetails.getEmail()
         );
+    }
+
+    @Transactional
+    @CacheEvict(value = {"drugById", "drugsSearch", "drugStatistics"}, allEntries = true)
+    public void deleteAccount(DeleteAccountRequest request) {
+        Integer userId = currentUserService.getCurrentUserId();
+        String userEmail = currentUserService.getCurrentUserEmail();
+
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalStateException("User not found"));
+
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            log.warn("Invalid password provided for account deletion: {}", userEmail);
+            throw new InvalidPasswordException("Invalid password");
+        }
+
+        log.info("Deleting account for user: {}", userEmail);
+
+        drugRepository.deleteAllByOwnerUserId(userId);
+        log.info("Deleted all drugs for user: {}", userEmail);
+
+        userRepository.delete(user);
+        log.info("Deleted user account: {}", userEmail);
+
+        SecurityContextHolder.clearContext();
+    }
+
+    private void sendWelcomeEmail(UserEntity user) {
+        try {
+            String subject = "Welcome to First Aid Kit!";
+            String body = buildWelcomeEmailBody(user.getName() != null ? user.getName() : user.getUserName());
+            emailService.sendEmail(user.getEmail(), subject, body);
+        } catch (Exception e) {
+            log.warn("Failed to send welcome email to {}: {}", user.getEmail(), e.getMessage());
+        }
+    }
+
+    private String buildWelcomeEmailBody(String name) {
+        return """
+            Hello %s,
+
+            Welcome to First Aid Kit! Your account has been created successfully.
+
+            With First Aid Kit, you can:
+            • Track your medications and their expiry dates
+            • Get alerts before your medicines expire
+            • Manage your personal first aid supplies
+
+            Start by adding your first medication to your kit.
+
+            If you have any questions, feel free to reach out to our support team.
+
+            Stay healthy!
+            The First Aid Kit Team
+            """.formatted(name);
     }
 }

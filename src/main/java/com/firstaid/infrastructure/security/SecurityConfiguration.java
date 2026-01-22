@@ -55,11 +55,11 @@ public class SecurityConfiguration {
                         .accessDeniedHandler(accessDeniedHandler())
                 )
                 .authorizeHttpRequests(auth -> auth
-                        // Public endpoints
-                        .requestMatchers("/api/auth/**").permitAll()
+                        // Public auth endpoints (login, register, refresh)
+                        .requestMatchers("/api/auth/login", "/api/auth/register", "/api/auth/refresh").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**", "/swagger-ui.html").permitAll()
                         .requestMatchers("/error").permitAll()
-                        // All other API endpoints require authentication
+                        // All other API endpoints require authentication (including /api/auth/account)
                         .requestMatchers("/api/**").authenticated()
                         // Allow other requests (Thymeleaf views, static resources)
                         .anyRequest().permitAll()

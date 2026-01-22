@@ -5,6 +5,7 @@ import com.firstaid.controller.dto.error.FieldValidationError;
 import com.firstaid.controller.dto.error.ValidationErrorMessageDTO;
 import com.firstaid.domain.exception.DrugNotFoundException;
 import com.firstaid.domain.exception.EmailSendingException;
+import com.firstaid.domain.exception.InvalidPasswordException;
 import com.firstaid.domain.exception.InvalidSortFieldException;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
@@ -176,6 +177,14 @@ public class GlobalExceptionHandler {
     @SuppressWarnings("unused")
     public ResponseEntity<ErrorMessage> handleBadCredentials(BadCredentialsException ex) {
         log.warn("Bad credentials: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(new ErrorMessage(401, ex.getMessage()));
+    }
+
+    @ExceptionHandler(InvalidPasswordException.class)
+    @SuppressWarnings("unused")
+    public ResponseEntity<ErrorMessage> handleInvalidPassword(InvalidPasswordException ex) {
+        log.warn("Invalid password: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(new ErrorMessage(401, ex.getMessage()));
     }

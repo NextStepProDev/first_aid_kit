@@ -1,5 +1,6 @@
 package com.firstaid.controller.auth;
 
+import com.firstaid.controller.dto.auth.DeleteAccountRequest;
 import com.firstaid.controller.dto.auth.JwtResponse;
 import com.firstaid.controller.dto.auth.LoginRequest;
 import com.firstaid.controller.dto.auth.RefreshTokenRequest;
@@ -10,11 +11,13 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -62,5 +65,17 @@ public class AuthController {
     public ResponseEntity<JwtResponse> refreshToken(@Valid @RequestBody RefreshTokenRequest request) {
         JwtResponse response = authService.refreshToken(request);
         return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/account")
+    @Operation(summary = "Delete user account", description = "Permanently deletes the authenticated user's account and all associated data")
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Account deleted successfully"),
+            @ApiResponse(responseCode = "401", description = "Invalid password")
+    })
+    public ResponseEntity<Void> deleteAccount(@Valid @RequestBody DeleteAccountRequest request) {
+        authService.deleteAccount(request);
+        return ResponseEntity.noContent().build();
     }
 }

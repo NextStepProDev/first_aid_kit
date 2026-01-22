@@ -1,5 +1,6 @@
 package com.firstaid.infrastructure.security;
 
+import com.firstaid.infrastructure.database.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -29,6 +30,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final String BEARER_PREFIX = "Bearer ";
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final UserRepository userRepository;
 
     @Override
     protected void doFilterInternal(@NonNull HttpServletRequest request,
@@ -49,6 +51,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 Integer userId = jwtTokenProvider.getUserIdFromToken(jwt);
                 String email = jwtTokenProvider.getEmailFromToken(jwt);
                 String roles = jwtTokenProvider.getRolesFromToken(jwt);
+
+                // Verify user still exists in database (e.g., account not deleted)
+                if (!userRepository.existsById(userId)) {
+                    log.warn("Token valid but user no longer exists: userId={}", userId);
+                    filterChain.doFilter(request, response);
+                    return;
+                }
 
                 List<SimpleGrantedAuthority> authorities = parseRoles(roles);
 

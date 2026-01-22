@@ -52,4 +52,6 @@ public interface DrugRepository extends JpaRepository<DrugEntity, Integer>, JpaS
 
     @Query("SELECT DISTINCT d.owner.userId FROM DrugEntity d WHERE d.expirationDate <= :date AND d.alertSent = false")
     List<Integer> findDistinctOwnerIdsWithExpiringDrugs(OffsetDateTime date);
+
+    void deleteAllByOwnerUserId(Integer userId);
 }
