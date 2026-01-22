@@ -199,8 +199,8 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalStateException.class)
     @SuppressWarnings("unused")
     public ResponseEntity<ErrorMessage> handleIllegalStateException(IllegalStateException ex) {
-        log.warn("Illegal state: {}", ex.getMessage());
+        log.error("Illegal state: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new ErrorMessage(500, "An unexpected error occurred"));
+                .body(new ErrorMessage(500, ex.getMessage()));
     }
 }
