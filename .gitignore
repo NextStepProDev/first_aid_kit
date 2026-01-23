@@ -18,6 +18,9 @@ out/
 !**/src/test/**/out/
 .env
 
+### Local config with secrets ###
+**/application-local.yml
+
 ### Eclipse ###
 .apt_generated
 .classpath

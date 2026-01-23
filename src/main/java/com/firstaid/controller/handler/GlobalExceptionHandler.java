@@ -7,9 +7,11 @@ import com.firstaid.domain.exception.DrugNotFoundException;
 import com.firstaid.domain.exception.EmailSendingException;
 import com.firstaid.domain.exception.InvalidPasswordException;
 import com.firstaid.domain.exception.InvalidSortFieldException;
+import com.firstaid.domain.exception.UserNotFoundException;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.core.PropertyReferenceException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -78,6 +80,13 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorMessage> handleDrugNotFound(DrugNotFoundException ex) {
         log.warn("Drug not found: {}", ex.getMessage());
         return ResponseEntity.status(404).body(new ErrorMessage(404, ex.getMessage()));
+    }
+
+    @ExceptionHandler(UserNotFoundException.class)
+    @SuppressWarnings("unused")
+    public ResponseEntity<ErrorMessage> handleUserNotFound(UserNotFoundException ex) {
+        log.warn("User not found: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorMessage(404, ex.getMessage()));
     }
 
     @ExceptionHandler(Exception.class)
@@ -211,5 +220,13 @@ public class GlobalExceptionHandler {
         log.error("Illegal state: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ErrorMessage(500, ex.getMessage()));
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    @SuppressWarnings("unused")
+    public ResponseEntity<ErrorMessage> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
+        log.warn("Data integrity violation: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(new ErrorMessage(409, "Data conflict - resource may already exist"));
     }
 }

@@ -28,6 +28,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.beans.factory.annotation.Value;
+
+import java.time.OffsetDateTime;
+import java.util.HashSet;
 import java.util.Set;
 
 @Service
@@ -45,6 +49,10 @@ public class AuthService {
     private final CurrentUserService currentUserService;
     private final EmailService emailService;
 
+    @Value("${app.admin.email}")
+    private String adminEmail;
+
+    @Transactional
     public JwtResponse login(LoginRequest request) {
         try {
             Authentication authentication = authenticationManager.authenticate(
@@ -54,6 +62,8 @@ public class AuthService {
             CustomUserDetails userDetails = (CustomUserDetails) authentication.getPrincipal();
             String accessToken = jwtTokenProvider.generateAccessToken(authentication);
             String refreshToken = jwtTokenProvider.generateRefreshToken(authentication);
+
+            updateLastLogin(userDetails.getUserId());
 
             log.info("User logged in successfully: {}", request.getEmail());
 
@@ -70,6 +80,13 @@ public class AuthService {
         }
     }
 
+    private void updateLastLogin(Integer userId) {
+        userRepository.findById(userId).ifPresent(user -> {
+            user.setLastLogin(OffsetDateTime.now());
+            userRepository.save(user);
+        });
+    }
+
     @Transactional
     public JwtResponse register(RegisterRequest request) {
         if (userRepository.existsByUserName(request.getUsername())) {
@@ -83,13 +100,25 @@ public class AuthService {
         RoleEntity userRole = roleRepository.findByRole("USER")
                 .orElseThrow(() -> new IllegalStateException("Default USER role not found"));
 
+        Set<RoleEntity> roles = new HashSet<>();
+        roles.add(userRole);
+
+        // Auto-grant ADMIN role if registering with configured admin email
+        if (request.getEmail().equalsIgnoreCase(adminEmail)) {
+            roleRepository.findByRole("ADMIN").ifPresent(adminRole -> {
+                roles.add(adminRole);
+                log.info("Granted ADMIN role to user with configured admin email: {}", request.getEmail());
+            });
+        }
+
         UserEntity user = UserEntity.builder()
                 .userName(request.getUsername())
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .name(request.getName())
                 .active(true)
-                .role(Set.of(userRole))
+                .role(roles)
+                .createdAt(OffsetDateTime.now())
                 .build();
 
         UserEntity savedUser = userRepository.save(user);

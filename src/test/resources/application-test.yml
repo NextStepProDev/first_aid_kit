@@ -19,3 +19,5 @@ app:
     secret: TestSecretKeyForJWTTokenGenerationMustBeAtLeast256BitsLongForTesting
     access-token-expiration-ms: 3600000
     refresh-token-expiration-ms: 86400000
+  admin:
+    email: admin@test.com

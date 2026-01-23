@@ -10,6 +10,7 @@ import com.firstaid.service.DrugFormService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.flywaydb.core.Flyway;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.annotation.Profile;
@@ -23,8 +24,10 @@ import org.springframework.transaction.annotation.Transactional;
 @Profile("!test")
 @RequiredArgsConstructor
 @jakarta.annotation.Generated("bootstrap")
-@SuppressWarnings("unused")
 public class BootstrapApplicationComponent implements ApplicationListener<ApplicationReadyEvent> {
+
+    @Value("${spring.profiles.active:}")
+    private String profile;
 
     private final DrugRepository drugRepository;
     private final DrugFormService drugFormService;
@@ -36,21 +39,38 @@ public class BootstrapApplicationComponent implements ApplicationListener<Applic
     // żeby zrobił dla nas kilka rzeczy. W tym przypadku podczas uruchamiania kontekstu będą wykonywane poniższe rzeczy
 
     @Override
-    @Transactional
+//    @Transactional
     public void onApplicationEvent(final @NonNull ApplicationReadyEvent event) {
         // Ensure Flyway migrations are run before seeding data
-        log.info("Running Flyway migrations...");
-        Flyway flyway = Flyway.configure()
-                .dataSource(dataSource)
-                .locations("classpath:db/migration")
-                .baselineOnMigrate(true)
-                .load();
-        // Repair checksums for dev environments where migrations may have been modified
-        flyway.repair();
-        flyway.migrate();
-        log.info("Flyway migrations completed.");
+//        log.info("Running Flyway migrations...");
+//        Flyway flyway = Flyway.configure()
+//                .dataSource(dataSource)
+//                .locations("classpath:db/migration")
+//                .baselineOnMigrate(true)
+//                .load();
+//        // Repair checksums for dev environments where migrations may have been modified
+//        flyway.repair();
+//        flyway.migrate();
+//        log.info("Flyway migrations completed.");
 
+        if ("local".equals(profile)) {
+            log.info("Clearing database for local testing...");
+            Flyway flyway = Flyway.configure()
+                    .dataSource(dataSource)
+                    .locations("classpath:db/migration")
+                    .baselineOnMigrate(true)
+                    .cleanDisabled(false)
+                    .load();
+
+            flyway.clean();  // usuwa wszystko w schemacie + historię migracji
+            flyway.migrate(); // odpala wszystkie migracje od nowa
+            resetUserSequences();
+            log.info("Database reset and migrations completed.");
+        }
         // Get default owner (first user - admin)
+        jdbcTemplate.queryForList("SELECT * FROM app_user").forEach(row ->
+                log.info("DB row: {}", row)
+        );
         UserEntity defaultOwner = userRepository.findByUserId(1)
                 .orElseThrow(() -> new IllegalStateException("Default user (id=1) not found. Please ensure the database has been seeded."));
 
@@ -120,5 +140,11 @@ public class BootstrapApplicationComponent implements ApplicationListener<Applic
         String resetQuery = "ALTER SEQUENCE drugs_drug_id_seq RESTART WITH 1;";
         jdbcTemplate.execute(resetQuery);
         log.info("Sequence for drugs_drug_id_seq reset to 1.");
+    }
+
+    private void resetUserSequences() {
+        jdbcTemplate.execute("SELECT setval('app_user_user_id_seq', (SELECT MAX(user_id) FROM app_user))");
+        jdbcTemplate.execute("SELECT setval('role_role_id_seq', (SELECT MAX(role_id) FROM role))");
+        log.info("User and role sequences synchronized.");
     }
 }
