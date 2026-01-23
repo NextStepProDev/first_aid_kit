@@ -49,6 +49,10 @@ public class JwtTokenProvider {
         return generateToken(userDetails, accessTokenExpirationMs, "access");
     }
 
+    public String generateRefreshTokenFromUserDetails(CustomUserDetails userDetails) {
+        return generateToken(userDetails, refreshTokenExpirationMs, "refresh");
+    }
+
     private String generateToken(CustomUserDetails userDetails, long expirationMs, String tokenType) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + expirationMs);

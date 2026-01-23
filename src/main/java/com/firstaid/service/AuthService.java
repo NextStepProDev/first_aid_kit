@@ -5,6 +5,8 @@ import com.firstaid.controller.dto.auth.JwtResponse;
 import com.firstaid.controller.dto.auth.LoginRequest;
 import com.firstaid.controller.dto.auth.RefreshTokenRequest;
 import com.firstaid.controller.dto.auth.RegisterRequest;
+import com.firstaid.controller.dto.auth.UserProfileResponse;
+import com.firstaid.domain.exception.AccountLockedException;
 import com.firstaid.domain.exception.InvalidPasswordException;
 import com.firstaid.infrastructure.database.entity.RoleEntity;
 import com.firstaid.infrastructure.database.entity.UserEntity;
@@ -33,11 +35,15 @@ import org.springframework.beans.factory.annotation.Value;
 import java.time.OffsetDateTime;
 import java.util.HashSet;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class AuthService {
+
+    private static final int MAX_FAILED_ATTEMPTS = 5;
+    private static final int LOCKOUT_DURATION_MINUTES = 15;
 
     private final AuthenticationManager authenticationManager;
     private final JwtTokenProvider jwtTokenProvider;
@@ -54,6 +60,13 @@ public class AuthService {
 
     @Transactional
     public JwtResponse login(LoginRequest request) {
+        // Check if account is locked before attempting authentication
+        UserEntity existingUser = userRepository.findByEmail(request.getEmail());
+        if (existingUser != null && existingUser.isAccountLocked()) {
+            log.warn("Login attempt on locked account: {}", request.getEmail());
+            throw new AccountLockedException("Account is locked. Please try again later.");
+        }
+
         try {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
@@ -63,6 +76,8 @@ public class AuthService {
             String accessToken = jwtTokenProvider.generateAccessToken(authentication);
             String refreshToken = jwtTokenProvider.generateRefreshToken(authentication);
 
+            // Reset failed attempts on successful login
+            resetFailedAttempts(userDetails.getUserId());
             updateLastLogin(userDetails.getUserId());
 
             log.info("User logged in successfully: {}", request.getEmail());
@@ -75,9 +90,33 @@ public class AuthService {
                     userDetails.getEmail()
             );
         } catch (BadCredentialsException e) {
-            log.warn("Failed login attempt for user: {}", request.getEmail());
+            handleFailedLogin(request.getEmail());
             throw new BadCredentialsException("Invalid email or password");
         }
+    }
+
+    private void handleFailedLogin(String email) {
+        UserEntity user = userRepository.findByEmail(email);
+        if (user != null) {
+            user.incrementFailedAttempts();
+
+            if (user.getFailedLoginAttempts() >= MAX_FAILED_ATTEMPTS) {
+                user.setLockedUntil(OffsetDateTime.now().plusMinutes(LOCKOUT_DURATION_MINUTES));
+                log.warn("Account locked due to {} failed attempts: {}", MAX_FAILED_ATTEMPTS, email);
+            }
+
+            userRepository.save(user);
+            log.warn("Failed login attempt {} for user: {}", user.getFailedLoginAttempts(), email);
+        }
+    }
+
+    private void resetFailedAttempts(Integer userId) {
+        userRepository.findById(userId).ifPresent(user -> {
+            if (user.getFailedLoginAttempts() > 0 || user.getLockedUntil() != null) {
+                user.resetFailedAttempts();
+                userRepository.save(user);
+            }
+        });
     }
 
     private void updateLastLogin(Integer userId) {
@@ -148,12 +187,13 @@ public class AuthService {
         CustomUserDetails userDetails = (CustomUserDetails) userDetailService.loadUserByUsername(username);
 
         String newAccessToken = jwtTokenProvider.generateAccessTokenFromUserDetails(userDetails);
+        String newRefreshToken = jwtTokenProvider.generateRefreshTokenFromUserDetails(userDetails);
 
-        log.info("Token refreshed for user: {}", username);
+        log.info("Token refreshed with rotation for user: {}", username);
 
         return JwtResponse.of(
                 newAccessToken,
-                refreshToken, // Return the same refresh token
+                newRefreshToken,
                 userDetails.getUserId(),
                 userDetails.getUsername(),
                 userDetails.getEmail()
@@ -186,13 +226,9 @@ public class AuthService {
     }
 
     private void sendWelcomeEmail(UserEntity user) {
-        try {
-            String subject = "Welcome to First Aid Kit!";
-            String body = buildWelcomeEmailBody(user.getName() != null ? user.getName() : user.getUserName());
-            emailService.sendEmail(user.getEmail(), subject, body);
-        } catch (Exception e) {
-            log.warn("Failed to send welcome email to {}: {}", user.getEmail(), e.getMessage());
-        }
+        String subject = "Welcome to First Aid Kit!";
+        String body = buildWelcomeEmailBody(user.getName() != null ? user.getName() : user.getUserName());
+        emailService.sendEmailAsync(user.getEmail(), subject, body);
     }
 
     private String buildWelcomeEmailBody(String name) {
@@ -213,5 +249,27 @@ public class AuthService {
             Stay healthy!
             The First Aid Kit Team
             """.formatted(name);
+    }
+
+    @Transactional(readOnly = true)
+    public UserProfileResponse getCurrentUserProfile() {
+        Integer userId = currentUserService.getCurrentUserId();
+
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalStateException("User not found"));
+
+        Set<String> roles = user.getRole().stream()
+                .map(RoleEntity::getRole)
+                .collect(Collectors.toSet());
+
+        return UserProfileResponse.builder()
+                .userId(user.getUserId())
+                .username(user.getUserName())
+                .email(user.getEmail())
+                .name(user.getName())
+                .roles(roles)
+                .createdAt(user.getCreatedAt())
+                .lastLogin(user.getLastLogin())
+                .build();
     }
 }

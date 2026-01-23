@@ -1,0 +1,13 @@
+# Production profile configuration
+
+# Disable Swagger/OpenAPI in production
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
+
+# Disable rate limiting requests count increase for production
+app:
+  rate-limit:
+    requests-per-minute: 10

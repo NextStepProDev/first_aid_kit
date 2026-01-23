@@ -12,6 +12,12 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
+# Disable actuator health indicators that require external services
+management:
+  health:
+    mail:
+      enabled: false
+
 app:
   alert:
     recipientEmail: test@example.com

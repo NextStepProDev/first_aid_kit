@@ -3,6 +3,7 @@ package com.firstaid.controller.handler;
 import com.firstaid.controller.dto.error.ErrorMessage;
 import com.firstaid.controller.dto.error.FieldValidationError;
 import com.firstaid.controller.dto.error.ValidationErrorMessageDTO;
+import com.firstaid.domain.exception.AccountLockedException;
 import com.firstaid.domain.exception.DrugNotFoundException;
 import com.firstaid.domain.exception.EmailSendingException;
 import com.firstaid.domain.exception.InvalidPasswordException;
@@ -190,6 +191,14 @@ public class GlobalExceptionHandler {
         log.warn("Bad credentials: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(new ErrorMessage(401, ex.getMessage()));
+    }
+
+    @ExceptionHandler(AccountLockedException.class)
+    @SuppressWarnings("unused")
+    public ResponseEntity<ErrorMessage> handleAccountLocked(AccountLockedException ex) {
+        log.warn("Account locked: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.LOCKED)
+                .body(new ErrorMessage(423, ex.getMessage()));
     }
 
     @ExceptionHandler(InvalidPasswordException.class)

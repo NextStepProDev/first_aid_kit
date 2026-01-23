@@ -71,4 +71,39 @@ app:
     # When frontend is ready, set FRONTEND_URL env variable to point to it
     # If not set, the app will use the current server URL dynamically
     url: ${FRONTEND_URL:}
+  cors:
+    # Comma-separated list of allowed origins for CORS
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
+  rate-limit:
+    enabled: true
+    requests-per-minute: 20
 
+# Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: when_authorized
+      show-components: when_authorized
+  health:
+    db:
+      enabled: true
+    mail:
+      enabled: true
+
+# Resilience4j Retry Configuration
+resilience4j:
+  retry:
+    instances:
+      emailService:
+        maxAttempts: 3
+        waitDuration: 2s
+        enableExponentialBackoff: true
+        exponentialBackoffMultiplier: 2
+        retryExceptions:
+          - org.springframework.mail.MailException
+          - java.net.ConnectException

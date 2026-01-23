@@ -9,6 +9,7 @@ import com.firstaid.controller.dto.auth.MessageResponse;
 import com.firstaid.controller.dto.auth.RefreshTokenRequest;
 import com.firstaid.controller.dto.auth.RegisterRequest;
 import com.firstaid.controller.dto.auth.ResetPasswordRequest;
+import com.firstaid.controller.dto.auth.UserProfileResponse;
 import com.firstaid.service.AuthService;
 import com.firstaid.service.PasswordResetService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -23,6 +24,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -123,5 +125,18 @@ public class AuthController {
     public ResponseEntity<MessageResponse> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
         passwordResetService.changePassword(request);
         return ResponseEntity.ok(MessageResponse.of("Password has been changed successfully"));
+    }
+
+    @GetMapping("/me")
+    @Operation(summary = "Get current user profile", description = "Returns the profile of the currently authenticated user")
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "User profile retrieved successfully",
+                    content = @Content(schema = @Schema(implementation = UserProfileResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Not authenticated")
+    })
+    public ResponseEntity<UserProfileResponse> getCurrentUser() {
+        UserProfileResponse profile = authService.getCurrentUserProfile();
+        return ResponseEntity.ok(profile);
     }
 }

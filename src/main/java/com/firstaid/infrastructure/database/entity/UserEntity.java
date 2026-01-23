@@ -55,4 +55,23 @@ public class UserEntity {
     @Column(name = "last_login")
     private OffsetDateTime lastLogin;
 
+    @Column(name = "failed_login_attempts")
+    @Builder.Default
+    private Integer failedLoginAttempts = 0;
+
+    @Column(name = "locked_until")
+    private OffsetDateTime lockedUntil;
+
+    public boolean isAccountLocked() {
+        return lockedUntil != null && lockedUntil.isAfter(OffsetDateTime.now());
+    }
+
+    public void incrementFailedAttempts() {
+        this.failedLoginAttempts = (this.failedLoginAttempts == null ? 0 : this.failedLoginAttempts) + 1;
+    }
+
+    public void resetFailedAttempts() {
+        this.failedLoginAttempts = 0;
+        this.lockedUntil = null;
+    }
 }
