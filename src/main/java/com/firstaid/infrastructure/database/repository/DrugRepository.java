@@ -20,10 +20,6 @@ public interface DrugRepository extends JpaRepository<DrugEntity, Integer>, JpaS
 
     Optional<DrugEntity> findByDrugIdAndOwnerUserId(Integer drugId, Integer userId);
 
-    Page<DrugEntity> findAllByOwnerUserId(Integer userId, Pageable pageable);
-
-    boolean existsByDrugIdAndOwnerUserId(Integer drugId, Integer userId);
-
     long countByOwnerUserId(Integer userId);
 
     long countByOwnerUserIdAndExpirationDateBefore(Integer userId, OffsetDateTime date);
@@ -40,15 +36,6 @@ public interface DrugRepository extends JpaRepository<DrugEntity, Integer>, JpaS
 
     @NonNull
     Page<DrugEntity> findAll(@NonNull Pageable pageable);
-
-    long countByExpirationDateBefore(OffsetDateTime now);
-
-    long countByAlertSentTrue();
-
-    @Query("SELECT d.drugForm.name, COUNT(d) FROM DrugEntity d GROUP BY d.drugForm.name")
-    List<Object[]> countGroupedByForm();
-
-    List<DrugEntity> findByExpirationDateLessThanEqualAndAlertSentFalse(OffsetDateTime date);
 
     @Query("SELECT DISTINCT d.owner.userId FROM DrugEntity d WHERE d.expirationDate <= :date AND d.alertSent = false")
     List<Integer> findDistinctOwnerIdsWithExpiringDrugs(OffsetDateTime date);

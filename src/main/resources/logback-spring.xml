@@ -1,36 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
 
+    <!-- domyślny ładny format Spring Boot -->
     <include resource="org/springframework/boot/logging/logback/base.xml"/>
 
+    <!-- DEV / LOCAL -->
+    <springProfile name="local | dev">
+        <root level="INFO">
+            <appender-ref ref="CONSOLE"/>
+        </root>
+    </springProfile>
+
+    <!-- PROD -->
     <springProfile name="prod">
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>
         </root>
     </springProfile>
 
-    <springProfile name="local | dev">
-        <root level="DEBUG">
-            <appender-ref ref="CONSOLE"/>
-        </root>
-    </springProfile>
-
-    <root level="INFO">
-        <appender-ref ref="CONSOLE"/>
-    </root>
-
-    <appender name="ERROR_FILE" class="ch.qos.logback.core.FileAppender">
-        <file>logs/errors.log</file>
-        <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss} - %msg%n</pattern>
-        </encoder>
-    </appender>
-
-    <logger name="org.springframework" level="ERROR">
-        <appender-ref ref="ERROR_FILE"/>
-    </logger>
-
 </configuration>
-
-        <!--Jeśli w ogóle nie będzie tego pliku to spring boot wykorzysta swoje ustawienie i i tak będzie logował w taki jak ten
-        mniej-więcej sposób-->

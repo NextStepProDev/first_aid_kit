@@ -13,8 +13,6 @@ import java.util.Optional;
 @Repository
 public interface PasswordResetTokenRepository extends JpaRepository<PasswordResetTokenEntity, Integer> {
 
-    Optional<PasswordResetTokenEntity> findByToken(String token);
-
     @Query("SELECT t FROM PasswordResetTokenEntity t WHERE t.token = :token AND t.expiresAt > :now AND t.usedAt IS NULL")
     Optional<PasswordResetTokenEntity> findValidToken(@Param("token") String token, @Param("now") OffsetDateTime now);
 

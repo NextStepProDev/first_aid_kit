@@ -16,12 +16,9 @@ import static java.lang.annotation.RetentionPolicy.RUNTIME;
 @Retention(RUNTIME)
 public @interface NotBeforeCurrentMonth {
 
-    @SuppressWarnings("unused")
     String message() default "Expiration month must be current or later";
 
-    @SuppressWarnings("unused")
     Class<?>[] groups() default {};
 
-    @SuppressWarnings("unused")
     Class<? extends Payload>[] payload() default {};
 }

@@ -23,11 +23,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
@@ -111,20 +109,6 @@ public class AuthController {
     public ResponseEntity<MessageResponse> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         passwordResetService.resetPassword(request);
         return ResponseEntity.ok(MessageResponse.of("Password has been reset successfully"));
-    }
-
-    @GetMapping("/validate-reset-token")
-    @Operation(summary = "Validate reset token", description = "Checks if a password reset token is valid and not expired")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Token validation result",
-                    content = @Content(schema = @Schema(implementation = MessageResponse.class)))
-    })
-    public ResponseEntity<MessageResponse> validateResetToken(@RequestParam String token) {
-        boolean isValid = passwordResetService.isTokenValid(token);
-        if (isValid) {
-            return ResponseEntity.ok(MessageResponse.of("Token is valid"));
-        }
-        return ResponseEntity.badRequest().body(MessageResponse.of("Token is invalid or expired"));
     }
 
     @PostMapping("/change-password")

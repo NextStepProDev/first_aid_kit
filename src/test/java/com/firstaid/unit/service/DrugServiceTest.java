@@ -249,7 +249,7 @@ class DrugServiceTest {
             doThrow(new RuntimeException("smtp fail")).when(emailService).sendEmail(anyString(), anyString(), anyString());
             assertThatThrownBy(() -> drugService.sendExpiryAlertEmailsForCurrentUser(YEAR_NOW_PLUS_1, 8))
                     .isInstanceOf(EmailSendingException.class)
-                    .hasMessageContaining("Could not send email alert for drug");
+                    .hasMessageContaining("Could not send consolidated email alert");
             verify(drugRepository, never()).save(any(DrugEntity.class));
         }
         @Test

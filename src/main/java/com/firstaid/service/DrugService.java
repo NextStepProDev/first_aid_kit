@@ -22,6 +22,7 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.OffsetDateTime;
@@ -129,6 +130,7 @@ public class DrugService {
         sendAlertsForDrugs(expiringDrugs, userEmail);
     }
 
+    @CacheEvict(value = { "drugById", "drugsSearch", "drugStatistics" }, allEntries = true)
     public void sendDefaultExpiryAlertEmailsForCurrentUser() {
         log.info("Sending default expiry alert emails for current user.");
         OffsetDateTime now = OffsetDateTime.now();
@@ -137,9 +139,18 @@ public class DrugService {
     }
 
     /**
-     * Scheduled task: sends alerts to all users with expiring drugs.
+     * Scheduled task: sends alerts to all users with drugs expiring within 1 month.
+     * Runs daily at 9:00 AM.
      * This method is NOT user-scoped - it processes all users.
      */
+    @Scheduled(cron = "0 0 9 * * *")
+    @CacheEvict(value = { "drugById", "drugsSearch", "drugStatistics" }, allEntries = true)
+    public void sendScheduledExpiryAlerts() {
+        log.info("Scheduler: Running daily expiry alert task at 9:00 AM");
+        OffsetDateTime oneMonthLater = OffsetDateTime.now().plusMonths(1);
+        sendExpiryAlertEmailsForAllUsers(oneMonthLater.getYear(), oneMonthLater.getMonthValue());
+    }
+
     @CacheEvict(value = { "drugById", "drugsSearch", "drugStatistics" }, allEntries = true)
     public void sendExpiryAlertEmailsForAllUsers(int year, int month) {
         log.info("Scheduler: Sending expiry alert emails for all users for drugs expiring up to {}/{}", year, month);
@@ -171,35 +182,50 @@ public class DrugService {
             return;
         }
 
-        for (DrugEntity drug : drugs) {
-            log.info("Sending alert for drug: {}", drug.getDrugName());
+        // Filter only drugs that haven't been alerted yet
+        List<DrugEntity> drugsToAlert = drugs.stream()
+                .filter(drug -> !drug.isAlertSent())
+                .toList();
 
-            if (!drug.isAlertSent()) {
-                String subject = "Drug Expiry Alert";
-                String message = """
-                        Attention!
+        if (drugsToAlert.isEmpty()) {
+            log.info("All drugs already notified. Skipping email sending.");
+            return;
+        }
 
-                        The drug *%s* in your first aid kit is about to expire!
-                        Please check it as soon as possible before it's too late!
+        // Build consolidated email with all drugs
+        String subject = "Drug Expiry Alert - " + drugsToAlert.size() + " drug(s) expiring soon";
+        StringBuilder messageBuilder = new StringBuilder();
+        messageBuilder.append("Attention!\n\n");
+        messageBuilder.append("The following drugs in your first aid kit are about to expire:\n\n");
 
-                        Expiration date: %s
-                        Description: %s
-
-                        Take care of your health!
-                        """.formatted(drug.getDrugName(), drug.getExpirationDate().toLocalDate(),
-                        drug.getDrugDescription());
-                try {
-                    emailService.sendEmail(recipientEmail, subject, message);
-                    drug.setAlertSent(true);
-                    drugRepository.save(drug);
-                    log.info("Alert sent and drug marked as notified: {}", drug.getDrugName());
-                } catch (Exception e) {
-                    log.error("Failed to send alert for drug: {}", drug.getDrugName(), e);
-                    throw new EmailSendingException("Could not send email alert for drug: " + drug.getDrugName(), e);
-                }
-            } else {
-                log.info("Drug already notified: {}", drug.getDrugName());
+        for (int i = 0; i < drugsToAlert.size(); i++) {
+            DrugEntity drug = drugsToAlert.get(i);
+            messageBuilder.append(String.format("%d. %s%n", i + 1, drug.getDrugName()));
+            messageBuilder.append(String.format("   Expiration date: %s%n", drug.getExpirationDate().toLocalDate()));
+            if (drug.getDrugDescription() != null && !drug.getDrugDescription().isBlank()) {
+                messageBuilder.append(String.format("   Description: %s%n", drug.getDrugDescription()));
             }
+            messageBuilder.append("\n");
+        }
+
+        messageBuilder.append("Please check these items as soon as possible!\n\n");
+        messageBuilder.append("Take care of your health!\n");
+        messageBuilder.append("Your First Aid Kit");
+
+        try {
+            emailService.sendEmail(recipientEmail, subject, messageBuilder.toString());
+            log.info("Consolidated alert sent for {} drugs to {}", drugsToAlert.size(), recipientEmail);
+
+            // Mark all drugs as alerted
+            for (DrugEntity drug : drugsToAlert) {
+                drug.setAlertSent(true);
+                drugRepository.save(drug);
+                log.debug("Drug marked as notified: {}", drug.getDrugName());
+            }
+            log.info("All {} drugs marked as notified", drugsToAlert.size());
+        } catch (Exception e) {
+            log.error("Failed to send consolidated alert email to {}", recipientEmail, e);
+            throw new EmailSendingException("Could not send consolidated email alert", e);
         }
     }
 

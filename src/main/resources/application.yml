@@ -5,6 +5,10 @@ server:
   forward-headers-strategy: framework
 
 spring:
+  threads:
+    virtual:
+      enabled: true
+
   mail:
     host: smtp.gmail.com
     port: 587
