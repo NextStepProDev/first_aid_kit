@@ -1,4 +1,4 @@
-package com.firstaid.infrastructure.configuration;
+package com.firstaid.infrastructure.bootstrap;
 
 import com.firstaid.controller.dto.DrugFormDTO;
 import com.firstaid.infrastructure.database.entity.DrugEntity;
@@ -9,22 +9,32 @@ import com.firstaid.infrastructure.util.DateUtils;
 import com.firstaid.service.DrugFormService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.flywaydb.core.Flyway;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
-import org.springframework.context.ApplicationListener;
+import org.springframework.context.ApplicationEvent;
 import org.springframework.context.annotation.Profile;
+import org.springframework.context.event.SmartApplicationListener;
+import org.springframework.core.Ordered;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.lang.NonNull;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 @Slf4j
 @Component
 @Profile("!test")
 @RequiredArgsConstructor
 @jakarta.annotation.Generated("bootstrap")
-public class BootstrapApplicationComponent implements ApplicationListener<ApplicationReadyEvent> {
+public class BootstrapApplicationComponent implements SmartApplicationListener {
+
+    @Override
+    public int getOrder() {
+        return Ordered.HIGHEST_PRECEDENCE;
+    }
+
+    @Override
+    public boolean supportsEventType(@NonNull Class<? extends ApplicationEvent> eventType) {
+        return ApplicationReadyEvent.class.isAssignableFrom(eventType);
+    }
 
     @Value("${spring.profiles.active:}")
     private String profile;
@@ -33,39 +43,16 @@ public class BootstrapApplicationComponent implements ApplicationListener<Applic
     private final DrugFormService drugFormService;
     private final JdbcTemplate jdbcTemplate;
     private final UserRepository userRepository;
-    private final javax.sql.DataSource dataSource;
 
     // To jest bardzo ciekawy mechanizm. Ta klasa powoduje, że podczas wstawania spring możemy się wpiąć do niego,
     // żeby zrobił dla nas kilka rzeczy. W tym przypadku podczas uruchamiania kontekstu będą wykonywane poniższe rzeczy
 
     @Override
-//    @Transactional
-    public void onApplicationEvent(final @NonNull ApplicationReadyEvent event) {
+    public void onApplicationEvent(@NonNull ApplicationEvent event) {
         // Ensure Flyway migrations are run before seeding data
-//        log.info("Running Flyway migrations...");
-//        Flyway flyway = Flyway.configure()
-//                .dataSource(dataSource)
-//                .locations("classpath:db/migration")
-//                .baselineOnMigrate(true)
-//                .load();
-//        // Repair checksums for dev environments where migrations may have been modified
-//        flyway.repair();
-//        flyway.migrate();
-//        log.info("Flyway migrations completed.");
 
         if ("local".equals(profile)) {
-            log.info("Clearing database for local testing...");
-            Flyway flyway = Flyway.configure()
-                    .dataSource(dataSource)
-                    .locations("classpath:db/migration")
-                    .baselineOnMigrate(true)
-                    .cleanDisabled(false)
-                    .load();
-
-            flyway.clean();  // usuwa wszystko w schemacie + historię migracji
-            flyway.migrate(); // odpala wszystkie migracje od nowa
             resetUserSequences();
-            log.info("Database reset and migrations completed.");
         }
         // Get default owner (first user - admin)
         jdbcTemplate.queryForList("SELECT * FROM app_user").forEach(row ->

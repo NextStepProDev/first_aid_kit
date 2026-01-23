@@ -63,4 +63,8 @@ app:
     refresh-token-expiration-ms: 86400000  # 24 hours
   admin:
     email: ${ADMIN_EMAIL:firstaidkit.team@gmail.com}
+  frontend:
+    # When frontend is ready, set FRONTEND_URL env variable to point to it
+    # If not set, the app will use the current server URL dynamically
+    url: ${FRONTEND_URL:}
 

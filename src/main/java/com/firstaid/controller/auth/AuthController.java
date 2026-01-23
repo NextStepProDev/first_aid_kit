@@ -1,11 +1,16 @@
 package com.firstaid.controller.auth;
 
+import com.firstaid.controller.dto.auth.ChangePasswordRequest;
 import com.firstaid.controller.dto.auth.DeleteAccountRequest;
+import com.firstaid.controller.dto.auth.ForgotPasswordRequest;
 import com.firstaid.controller.dto.auth.JwtResponse;
 import com.firstaid.controller.dto.auth.LoginRequest;
+import com.firstaid.controller.dto.auth.MessageResponse;
 import com.firstaid.controller.dto.auth.RefreshTokenRequest;
 import com.firstaid.controller.dto.auth.RegisterRequest;
+import com.firstaid.controller.dto.auth.ResetPasswordRequest;
 import com.firstaid.service.AuthService;
+import com.firstaid.service.PasswordResetService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -18,10 +23,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -30,6 +38,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService authService;
+    private final PasswordResetService passwordResetService;
 
     @PostMapping("/register")
     @Operation(summary = "Register a new user", description = "Creates a new user account and returns JWT tokens")
@@ -77,5 +86,58 @@ public class AuthController {
     public ResponseEntity<Void> deleteAccount(@Valid @RequestBody DeleteAccountRequest request) {
         authService.deleteAccount(request);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/forgot-password")
+    @Operation(summary = "Request password reset", description = "Sends a password reset email to the specified address if the account exists")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "If the email exists, a reset link has been sent",
+                    content = @Content(schema = @Schema(implementation = MessageResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid email format")
+    })
+    public ResponseEntity<MessageResponse> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        String baseUrl = ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
+        passwordResetService.initiatePasswordReset(request, baseUrl);
+        return ResponseEntity.ok(MessageResponse.of("If the email exists, a password reset link has been sent"));
+    }
+
+    @PostMapping("/reset-password")
+    @Operation(summary = "Reset password with token", description = "Resets the password using a valid reset token")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Password reset successfully",
+                    content = @Content(schema = @Schema(implementation = MessageResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid or expired token, or passwords don't match")
+    })
+    public ResponseEntity<MessageResponse> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        passwordResetService.resetPassword(request);
+        return ResponseEntity.ok(MessageResponse.of("Password has been reset successfully"));
+    }
+
+    @GetMapping("/validate-reset-token")
+    @Operation(summary = "Validate reset token", description = "Checks if a password reset token is valid and not expired")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Token validation result",
+                    content = @Content(schema = @Schema(implementation = MessageResponse.class)))
+    })
+    public ResponseEntity<MessageResponse> validateResetToken(@RequestParam String token) {
+        boolean isValid = passwordResetService.isTokenValid(token);
+        if (isValid) {
+            return ResponseEntity.ok(MessageResponse.of("Token is valid"));
+        }
+        return ResponseEntity.badRequest().body(MessageResponse.of("Token is invalid or expired"));
+    }
+
+    @PostMapping("/change-password")
+    @Operation(summary = "Change password", description = "Changes the password for the authenticated user")
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Password changed successfully",
+                    content = @Content(schema = @Schema(implementation = MessageResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Passwords don't match or new password same as old"),
+            @ApiResponse(responseCode = "401", description = "Current password is incorrect")
+    })
+    public ResponseEntity<MessageResponse> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+        passwordResetService.changePassword(request);
+        return ResponseEntity.ok(MessageResponse.of("Password has been changed successfully"));
     }
 }

@@ -33,10 +33,21 @@ feature is also available for listing current drugs.
 - **Statistics**:
   - Get statistics on the total number of drugs, expired drugs, active drugs, and alerts sent.
 
+- **Multi-Tenancy**:
+  - Each user has their own isolated drug collection.
+  - Users can only view and manage their own medications.
+  - Data is automatically filtered by the authenticated user.
+
 - **Authentication & Security**:
   - JWT-based authentication (access + refresh tokens).
   - User registration and login via **email + password**.
   - Role-based access control (USER, ADMIN).
+  - Welcome email sent upon successful registration.
+
+- **Account Management**:
+  - Delete account permanently.
+  - Password recovery via email (forgot password).
+  - Password change for authenticated users.
 
 ## 📦 API Endpoints
 
@@ -101,6 +112,44 @@ Full documentation available via [Swagger UI](http://localhost:8081/swagger-ui/i
   ```
 
 > **Note:** Protected endpoints require `Authorization: Bearer <accessToken>` header.
+
+---
+
+### 👤 Account Management
+
+- **`DELETE /api/auth/account`**
+  _Permanently deletes the authenticated user's account and all associated data._
+
+- **`POST /api/auth/forgot-password`**
+  _Initiates password recovery via email._
+  ```json
+  {
+    "email": "john@example.com"
+  }
+  ```
+
+- **`POST /api/auth/reset-password`**
+  _Resets the password using a valid reset token._
+  ```json
+  {
+    "token": "reset-token-from-email",
+    "newPassword": "newSecurePassword123",
+    "confirmPassword": "newSecurePassword123"
+  }
+  ```
+
+- **`GET /api/auth/validate-reset-token?token=...`**
+  _Validates if a password reset token is still valid._
+
+- **`POST /api/auth/change-password`** _(requires authentication)_
+  _Changes the password for the authenticated user._
+  ```json
+  {
+    "currentPassword": "oldPassword123",
+    "newPassword": "newSecurePassword123",
+    "confirmPassword": "newSecurePassword123"
+  }
+  ```
 
 ---
 

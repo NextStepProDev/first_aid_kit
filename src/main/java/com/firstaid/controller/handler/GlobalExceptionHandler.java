@@ -7,6 +7,8 @@ import com.firstaid.domain.exception.DrugNotFoundException;
 import com.firstaid.domain.exception.EmailSendingException;
 import com.firstaid.domain.exception.InvalidPasswordException;
 import com.firstaid.domain.exception.InvalidSortFieldException;
+import com.firstaid.domain.exception.InvalidTokenException;
+import com.firstaid.domain.exception.PasswordMismatchException;
 import com.firstaid.domain.exception.UserNotFoundException;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
@@ -196,6 +198,22 @@ public class GlobalExceptionHandler {
         log.warn("Invalid password: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                 .body(new ErrorMessage(401, ex.getMessage()));
+    }
+
+    @ExceptionHandler(InvalidTokenException.class)
+    @SuppressWarnings("unused")
+    public ResponseEntity<ErrorMessage> handleInvalidToken(InvalidTokenException ex) {
+        log.warn("Invalid token: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorMessage(400, ex.getMessage()));
+    }
+
+    @ExceptionHandler(PasswordMismatchException.class)
+    @SuppressWarnings("unused")
+    public ResponseEntity<ErrorMessage> handlePasswordMismatch(PasswordMismatchException ex) {
+        log.warn("Password mismatch: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(new ErrorMessage(400, ex.getMessage()));
     }
 
     @ExceptionHandler(AuthenticationException.class)
