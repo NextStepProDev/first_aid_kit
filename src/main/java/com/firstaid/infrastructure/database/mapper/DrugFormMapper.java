@@ -1,6 +1,6 @@
 package com.firstaid.infrastructure.database.mapper;
 
-import com.firstaid.controller.dto.DrugFormDTO;
+import com.firstaid.controller.dto.drug.DrugFormDTO;
 import com.firstaid.infrastructure.database.entity.DrugFormEntity;
 import org.mapstruct.Mapper;
 

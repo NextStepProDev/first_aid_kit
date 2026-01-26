@@ -19,6 +19,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import java.security.SecureRandom;
 import java.time.OffsetDateTime;
@@ -162,9 +163,16 @@ public class PasswordResetService {
 
     private void sendPasswordResetEmail(UserEntity user, String token, String baseUrl) {
         try {
-            // Use configured frontend URL if set, otherwise use the provided base URL
+            // Wybieramy bazowy adres (Frontend)
             String effectiveBaseUrl = (frontendUrl != null && !frontendUrl.isBlank()) ? frontendUrl : baseUrl;
-            String resetLink = effectiveBaseUrl + "/reset-password?token=" + token;
+
+            // Budujemy link bezpiecznie
+            String resetLink = UriComponentsBuilder.fromUriString(effectiveBaseUrl) // To zadziała na 100%
+                    .path("/reset-password")
+                    .queryParam("token", token)
+                    .build()
+                    .toUriString();
+
             String subject = "Password Reset Request - First Aid Kit";
             String body = buildPasswordResetEmailBody(
                     user.getName() != null ? user.getName() : user.getUserName(),
@@ -174,7 +182,6 @@ public class PasswordResetService {
             log.info("Password reset email sent to: {}", user.getEmail());
         } catch (Exception e) {
             log.error("Failed to send password reset email to {}: {}", user.getEmail(), e.getMessage());
-            // Don't throw - we don't want to reveal email existence
         }
     }
 

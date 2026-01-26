@@ -1,9 +1,9 @@
 package com.firstaid.unit.service;
 
-import com.firstaid.controller.dto.DrugDTO;
-import com.firstaid.controller.dto.DrugFormDTO;
-import com.firstaid.controller.dto.DrugRequestDTO;
-import com.firstaid.controller.dto.DrugStatisticsDTO;
+import com.firstaid.controller.dto.drug.DrugCreateRequest;
+import com.firstaid.controller.dto.drug.DrugFormDTO;
+import com.firstaid.controller.dto.drug.DrugResponse;
+import com.firstaid.controller.dto.drug.DrugStatistics;
 import com.firstaid.domain.exception.DrugNotFoundException;
 import com.firstaid.domain.exception.EmailSendingException;
 import com.firstaid.infrastructure.database.entity.DrugEntity;
@@ -17,6 +17,7 @@ import com.firstaid.infrastructure.security.CurrentUserService;
 import com.firstaid.infrastructure.util.DateUtils;
 import com.firstaid.service.DrugFormService;
 import com.firstaid.service.DrugService;
+import com.firstaid.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -47,7 +48,7 @@ class DrugServiceTest {
 
     private static final Integer TEST_USER_ID = 1;
     private static final String TEST_USER_EMAIL = "test@example.com";
-
+    static int YEAR_NOW_PLUS_1 = OffsetDateTime.now().plusYears(1).getYear();
     @Mock
     private DrugRepository drugRepository;
     @Mock
@@ -60,22 +61,22 @@ class DrugServiceTest {
     private CurrentUserService currentUserService;
     @Mock
     private UserRepository userRepository;
-
-    @InjectMocks private DrugService drugService;
-
-    static int YEAR_NOW_PLUS_1 = OffsetDateTime.now().plusYears(1).getYear();
+    @Mock
+    private UserService userService;
+    @InjectMocks
+    private DrugService drugService;
 
     @BeforeEach
     void setUp() {
         // Set up default user context for all tests
         lenient().when(currentUserService.getCurrentUserId()).thenReturn(TEST_USER_ID);
         lenient().when(currentUserService.getCurrentUserEmail()).thenReturn(TEST_USER_EMAIL);
-        lenient().when(userRepository.findByUserId(TEST_USER_ID))
-                .thenReturn(Optional.of(UserEntity.builder().userId(TEST_USER_ID).email(TEST_USER_EMAIL).build()));
+        lenient().when(userRepository.findByUserId(TEST_USER_ID)).thenReturn(Optional.of(UserEntity.builder().userId(TEST_USER_ID).email(TEST_USER_EMAIL).build()));
     }
 
     // ---------------------- getDrugById ----------------------
-    @Nested @DisplayName("getDrugById")
+    @Nested
+    @DisplayName("getDrugById")
     class GetDrugById {
         @Test
         void shouldThrowWhenNotFound() {
@@ -83,10 +84,11 @@ class DrugServiceTest {
             assertThrows(DrugNotFoundException.class, () -> drugService.getDrugById(999));
             verify(drugRepository).findByDrugIdAndOwnerUserId(999, TEST_USER_ID);
         }
+
         @Test
         void shouldReturnDTO() {
             DrugEntity e = DrugEntity.builder().drugId(1).drugName("Aspirin").build();
-            DrugDTO dto = DrugDTO.builder().drugId(1).drugName("Aspirin").build();
+            DrugResponse dto = DrugResponse.builder().drugId(1).drugName("Aspirin").build();
             when(drugRepository.findByDrugIdAndOwnerUserId(1, TEST_USER_ID)).thenReturn(Optional.of(e));
             when(drugMapper.mapToDTO(e)).thenReturn(dto);
             assertThat(drugService.getDrugById(1)).isEqualTo(dto);
@@ -95,20 +97,21 @@ class DrugServiceTest {
     }
 
     // ---------------------- addNewDrug ----------------------
-    @Nested @DisplayName("addNewDrug")
+    @Nested
+    @DisplayName("addNewDrug")
     class AddNewDrug {
         @Test
         void shouldPersistAndReturnDTO() {
-            DrugRequestDTO req = new DrugRequestDTO("Ibuprofen", DrugFormDTO.GEL.name(), 2025, 5, "Painkiller");
+            DrugCreateRequest req = new DrugCreateRequest("Ibuprofen", DrugFormDTO.GEL.name(), 2025, 5, "Painkiller");
             DrugFormEntity form = DrugFormEntity.builder().id(7).name("GEL").build();
             DrugEntity saved = DrugEntity.builder().drugId(11).drugName("Ibuprofen").drugForm(form).build();
-            DrugDTO expected = DrugDTO.builder().drugId(11).drugName("Ibuprofen").build();
+            DrugResponse expected = DrugResponse.builder().drugId(11).drugName("Ibuprofen").build();
 
             when(drugFormService.resolve(DrugFormDTO.GEL)).thenReturn(form);
             when(drugRepository.save(any(DrugEntity.class))).thenReturn(saved);
             when(drugMapper.mapToDTO(saved)).thenReturn(expected);
 
-            DrugDTO out = drugService.addNewDrug(req);
+            DrugResponse out = drugService.addNewDrug(req);
 
             assertThat(out).isEqualTo(expected);
             ArgumentCaptor<DrugEntity> captor = ArgumentCaptor.forClass(DrugEntity.class);
@@ -119,33 +122,28 @@ class DrugServiceTest {
 
         @Test
         void shouldThrow_whenFormIsNull() {
-            DrugRequestDTO req = new DrugRequestDTO("Ibuprofen", null, 2025, 5,
-                    "Painkiller");
-
-            assertThatThrownBy(() -> drugService.addNewDrug(req))
-                    .isInstanceOf(IllegalArgumentException.class)
+            DrugCreateRequest req = new DrugCreateRequest("Ibuprofen", null, 2025, 5, "Painkiller");
+            assertThatThrownBy(
+                    () -> drugService.addNewDrug(req)).isInstanceOf(IllegalArgumentException.class)
                     .hasMessageContaining("Drug form cannot be null");
-
             verifyNoInteractions(drugRepository, drugFormService);
         }
 
         @Test
         void shouldThrow_whenFormIsInvalid() {
             // given
-            DrugRequestDTO req = new DrugRequestDTO("Ibuprofen", "XYZ", 2025, 5,
-                    "Painkiller");
+            DrugCreateRequest req = new DrugCreateRequest("Ibuprofen", "XYZ", 2025, 5, "Painkiller");
 
             // when + then
-            assertThatThrownBy(() -> drugService.addNewDrug(req))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("Invalid drug form");
+            assertThatThrownBy(() -> drugService.addNewDrug(req)).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Invalid drug form");
 
             verifyNoInteractions(drugRepository, drugFormService);
         }
     }
 
     // ---------------------- deleteDrug ----------------------
-    @Nested @DisplayName("deleteDrug")
+    @Nested
+    @DisplayName("deleteDrug")
     class DeleteDrug {
         @Test
         void shouldDeleteWhenExists() {
@@ -154,6 +152,7 @@ class DrugServiceTest {
             drugService.deleteDrug(5);
             verify(drugRepository).delete(e);
         }
+
         @Test
         void shouldThrowWhenMissing() {
             when(drugRepository.findByDrugIdAndOwnerUserId(5, TEST_USER_ID)).thenReturn(Optional.empty());
@@ -163,7 +162,8 @@ class DrugServiceTest {
     }
 
     // ---------------------- updateDrug ----------------------
-    @Nested @DisplayName("updateDrug")
+    @Nested
+    @DisplayName("updateDrug")
     class UpdateDrug {
         @Test
         void shouldUpdateFieldsAndSave() {
@@ -172,8 +172,7 @@ class DrugServiceTest {
             DrugFormEntity form = DrugFormEntity.builder().id(2).name("PILLS").build();
             when(drugFormService.resolve(DrugFormDTO.PILLS)).thenReturn(form);
 
-            DrugRequestDTO req = new DrugRequestDTO("New", "PILLS",
-                    YEAR_NOW_PLUS_1, 1, "Desc");
+            DrugCreateRequest req = new DrugCreateRequest("New", "PILLS", YEAR_NOW_PLUS_1, 1, "Desc");
             when(drugRepository.save(any(DrugEntity.class))).thenAnswer(inv -> inv.getArgument(0));
 
             drugService.updateDrug(3, req);
@@ -183,13 +182,14 @@ class DrugServiceTest {
             DrugEntity saved = captor.getValue();
             assertThat(saved.getDrugName()).isEqualTo("New");
             assertThat(saved.getDrugForm()).isEqualTo(form);
-            assertThat(saved.getExpirationDate()).isEqualTo(DateUtils.buildExpirationDate(YEAR_NOW_PLUS_1,1));
+            assertThat(saved.getExpirationDate()).isEqualTo(DateUtils.buildExpirationDate(YEAR_NOW_PLUS_1, 1));
             assertThat(saved.getDrugDescription()).isEqualTo("Desc");
         }
+
         @Test
         void shouldThrowWhenNotFound() {
             when(drugRepository.findByDrugIdAndOwnerUserId(77, TEST_USER_ID)).thenReturn(Optional.empty());
-            assertThrows(DrugNotFoundException.class, () -> drugService.updateDrug(77, new DrugRequestDTO()));
+            assertThrows(DrugNotFoundException.class, () -> drugService.updateDrug(77, new DrugCreateRequest()));
         }
 
         @Test
@@ -197,11 +197,9 @@ class DrugServiceTest {
             DrugEntity existing = DrugEntity.builder().drugId(3).drugName("Old").build();
             when(drugRepository.findByDrugIdAndOwnerUserId(3, TEST_USER_ID)).thenReturn(Optional.of(existing));
 
-            DrugRequestDTO req = new DrugRequestDTO("New", null, YEAR_NOW_PLUS_1, 1, "Desc");
+            DrugCreateRequest req = new DrugCreateRequest("New", null, YEAR_NOW_PLUS_1, 1, "Desc");
 
-            assertThatThrownBy(() -> drugService.updateDrug(3, req))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("Drug form cannot be null");
+            assertThatThrownBy(() -> drugService.updateDrug(3, req)).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Drug form cannot be null");
 
             verify(drugRepository, never()).save(any(DrugEntity.class));
             verifyNoInteractions(drugFormService);
@@ -212,12 +210,10 @@ class DrugServiceTest {
             // given
             DrugEntity existing = DrugEntity.builder().drugId(3).drugName("Old").build();
             when(drugRepository.findByDrugIdAndOwnerUserId(3, TEST_USER_ID)).thenReturn(Optional.of(existing));
-            DrugRequestDTO req = new DrugRequestDTO("New", "XYZ", YEAR_NOW_PLUS_1, 1, "Desc");
+            DrugCreateRequest req = new DrugCreateRequest("New", "XYZ", YEAR_NOW_PLUS_1, 1, "Desc");
 
             // when + then
-            assertThatThrownBy(() -> drugService.updateDrug(3, req))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("Invalid drug form");
+            assertThatThrownBy(() -> drugService.updateDrug(3, req)).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Invalid drug form");
 
             verify(drugRepository, never()).save(any(DrugEntity.class));
             verifyNoInteractions(drugFormService);
@@ -225,14 +221,14 @@ class DrugServiceTest {
     }
 
     // ---------------------- sendExpiryAlertEmails ----------------------
-    @Nested @DisplayName("sendExpiryAlertEmails")
+    @Nested
+    @DisplayName("sendExpiryAlertEmails")
     class SendExpiryAlerts {
         @Test
         void shouldSendAndMarkAlertSent() {
             OffsetDateTime end = DateUtils.buildExpirationDate(YEAR_NOW_PLUS_1, 8);
             DrugEntity d = DrugEntity.builder().drugId(1).drugName("Old Drug").expirationDate(end).alertSent(false).build();
-            when(drugRepository.findByOwnerUserIdAndExpirationDateLessThanEqualAndAlertSentFalse(TEST_USER_ID, end))
-                    .thenReturn(List.of(d));
+            when(drugRepository.findByOwnerUserIdAndExpirationDateLessThanEqualAndAlertSentFalse(TEST_USER_ID, end)).thenReturn(List.of(d));
             when(drugRepository.save(any(DrugEntity.class))).thenAnswer(inv -> inv.getArgument(0));
 
             drugService.sendExpiryAlertEmailsForCurrentUser(YEAR_NOW_PLUS_1, 8);
@@ -240,23 +236,39 @@ class DrugServiceTest {
             verify(emailService).sendEmail(eq(TEST_USER_EMAIL), anyString(), anyString());
             verify(drugRepository).save(argThat(DrugEntity::isAlertSent));
         }
+
         @Test
         void shouldWrapAndPropagateWhenEmailFails() {
             OffsetDateTime end = DateUtils.buildExpirationDate(YEAR_NOW_PLUS_1, 8);
             DrugEntity d = DrugEntity.builder().drugId(1).drugName("X").expirationDate(end).alertSent(false).build();
-            when(drugRepository.findByOwnerUserIdAndExpirationDateLessThanEqualAndAlertSentFalse(TEST_USER_ID, end))
-                    .thenReturn(List.of(d));
+            when(drugRepository.findByOwnerUserIdAndExpirationDateLessThanEqualAndAlertSentFalse(TEST_USER_ID, end)).thenReturn(List.of(d));
             doThrow(new RuntimeException("smtp fail")).when(emailService).sendEmail(anyString(), anyString(), anyString());
-            assertThatThrownBy(() -> drugService.sendExpiryAlertEmailsForCurrentUser(YEAR_NOW_PLUS_1, 8))
-                    .isInstanceOf(EmailSendingException.class)
-                    .hasMessageContaining("Could not send consolidated email alert");
+            assertThatThrownBy(() -> drugService.sendExpiryAlertEmailsForCurrentUser(YEAR_NOW_PLUS_1, 8)).isInstanceOf(EmailSendingException.class).hasMessageContaining("Could not send consolidated email alert");
             verify(drugRepository, never()).save(any(DrugEntity.class));
         }
+
         @Test
         void defaultVariantShouldDelegateToMonthAhead() {
-            DrugService spy = Mockito.spy(drugService);
-            doNothing().when(spy).sendExpiryAlertEmailsForCurrentUser(anyInt(), anyInt());
+            DrugRepository drugRepository = Mockito.mock(DrugRepository.class);
+            CurrentUserService currentUserService = Mockito.mock(CurrentUserService.class);
+            DrugMapper drugMapper = Mockito.mock(DrugMapper.class); // jeśli go masz
+            EmailService emailService = Mockito.mock(EmailService.class); // jeśli go masz
+            // Dodaj tu inne mocki, jeśli Twój konstruktor ich wymaga
+
+            // 2. Tworzymy ręcznie instancję serwisu, przekazując te mocki
+            DrugService serviceInstance = new DrugService(drugRepository, drugFormService, drugMapper, emailService, currentUserService, userRepository, userService);
+
+            // 3. Robimy szpiega na czystym obiekcie
+            DrugService spy = Mockito.spy(serviceInstance);
+
+            // 4. Mówimy szpiegowi: "Gdy zawołasz metodę z parametrami, nie rób nic i zwróć 0"
+            // Używamy doReturn, żeby uniknąć wywołania prawdziwej logiki wewnątrz szpiega
+            doReturn(0).when(spy).sendExpiryAlertEmailsForCurrentUser(anyInt(), anyInt());
+
+            // 5. Wywołujemy metodę domyślną
             spy.sendDefaultExpiryAlertEmailsForCurrentUser();
+
+            // 6. Sprawdzamy, czy "pod maską" wywołała się ta druga metoda
             verify(spy).sendExpiryAlertEmailsForCurrentUser(anyInt(), anyInt());
         }
 
@@ -264,18 +276,11 @@ class DrugServiceTest {
         void shouldSkipAlreadyAlertedDrugs() {
             // given
             OffsetDateTime end = DateUtils.buildExpirationDate(YEAR_NOW_PLUS_1, 8);
-            DrugEntity alreadyAlerted = DrugEntity.builder()
-                    .drugId(9)
-                    .drugName("Notified Drug")
-                    .expirationDate(end)
-                    .drugDescription("desc")
-                    .alertSent(true)
-                    .build();
+            DrugEntity alreadyAlerted = DrugEntity.builder().drugId(9).drugName("Notified Drug").expirationDate(end).drugDescription("desc").alertSent(true).build();
 
             // Although the repository method name implies alertSent=false, we purposely return a true value
             // to exercise the defensive else-branch in the service.
-            when(drugRepository.findByOwnerUserIdAndExpirationDateLessThanEqualAndAlertSentFalse(TEST_USER_ID, end))
-                    .thenReturn(List.of(alreadyAlerted));
+            when(drugRepository.findByOwnerUserIdAndExpirationDateLessThanEqualAndAlertSentFalse(TEST_USER_ID, end)).thenReturn(List.of(alreadyAlerted));
 
             // when
             drugService.sendExpiryAlertEmailsForCurrentUser(YEAR_NOW_PLUS_1, 8);
@@ -287,7 +292,8 @@ class DrugServiceTest {
     }
 
     // ---------------------- getDrugStatistics ----------------------
-    @Nested @DisplayName("getDrugStatistics")
+    @Nested
+    @DisplayName("getDrugStatistics")
     class GetDrugStatistics {
         @Test
         void shouldReturnAggregates() {
@@ -295,12 +301,12 @@ class DrugServiceTest {
             when(drugRepository.countByOwnerUserIdAndExpirationDateBefore(eq(TEST_USER_ID), any())).thenReturn(4L);
             when(drugRepository.countByOwnerUserIdAndAlertSentTrue(TEST_USER_ID)).thenReturn(3L);
             when(drugRepository.countGroupedByFormAndUserId(TEST_USER_ID)).thenReturn(List.of(new Object[]{"PILLS", 6L}, new Object[]{"GEL", 1L}));
-            DrugStatisticsDTO s = drugService.getDrugStatistics();
+            DrugStatistics s = drugService.getDrugStatistics();
             assertThat(s.getTotalDrugs()).isEqualTo(10);
             assertThat(s.getExpiredDrugs()).isEqualTo(4);
             assertThat(s.getActiveDrugs()).isEqualTo(6);
             assertThat(s.getAlertSentCount()).isEqualTo(3);
-            assertThat(s.getDrugsByForm()).containsExactlyInAnyOrderEntriesOf(Map.of("PILLS",6L,"GEL",1L));
+            assertThat(s.getDrugsByForm()).containsExactlyInAnyOrderEntriesOf(Map.of("PILLS", 6L, "GEL", 1L));
         }
 
         @Test
@@ -308,37 +314,34 @@ class DrugServiceTest {
             when(drugRepository.countByOwnerUserId(TEST_USER_ID)).thenReturn(5L);
             when(drugRepository.countByOwnerUserIdAndExpirationDateBefore(eq(TEST_USER_ID), any())).thenReturn(1L);
             when(drugRepository.countByOwnerUserIdAndAlertSentTrue(TEST_USER_ID)).thenReturn(0L);
-            when(drugRepository.countGroupedByFormAndUserId(TEST_USER_ID)).thenReturn(List.of(
-                    new Object[]{"PILLS", 2L},
-                    new Object[]{null, 3L},
-                    new Object[]{"GEL", null}
-            ));
+            when(drugRepository.countGroupedByFormAndUserId(TEST_USER_ID)).thenReturn(List.of(new Object[]{"PILLS", 2L}, new Object[]{null, 3L}, new Object[]{"GEL", null}));
 
-            DrugStatisticsDTO s = drugService.getDrugStatistics();
+            DrugStatistics s = drugService.getDrugStatistics();
 
             assertThat(s.getDrugsByForm()).containsExactlyInAnyOrderEntriesOf(Map.of("PILLS", 2L));
         }
     }
 
     // ---------------------- searchDrugs ----------------------
-    @Nested @DisplayName("searchDrugs")
+    @Nested
+    @DisplayName("searchDrugs")
     class SearchDrugs {
         @Test
         void shouldDefaultYearWhenOnlyMonthProvided() {
             Pageable pageable = PageRequest.of(0, 10);
-            when(drugRepository.findAll(ArgumentMatchers.<Specification<DrugEntity>>any(), eq(pageable)))
-                    .thenReturn(new PageImpl<>(List.of(), pageable, 0));
+            when(drugRepository.findAll(ArgumentMatchers.<Specification<DrugEntity>>any(), eq(pageable))).thenReturn(new PageImpl<>(List.of(), pageable, 0));
             drugService.searchDrugs("", null, null, null, 8, pageable);
             verify(drugRepository).findAll(ArgumentMatchers.<Specification<DrugEntity>>any(), eq(pageable));
         }
+
         @Test
         void shouldDefaultMonthToDecemberWhenOnlyYearProvided() {
             Pageable pageable = PageRequest.of(0, 10);
-            when(drugRepository.findAll(ArgumentMatchers.<Specification<DrugEntity>>any(), eq(pageable)))
-                    .thenReturn(new PageImpl<>(List.of(), pageable, 0));
+            when(drugRepository.findAll(ArgumentMatchers.<Specification<DrugEntity>>any(), eq(pageable))).thenReturn(new PageImpl<>(List.of(), pageable, 0));
             drugService.searchDrugs("", null, null, YEAR_NOW_PLUS_1, null, pageable);
             verify(drugRepository).findAll(ArgumentMatchers.<Specification<DrugEntity>>any(), eq(pageable));
         }
+
         @Test
         void shouldResolveFormAndMapResults() {
             Pageable pageable = PageRequest.of(0, 2);
@@ -347,29 +350,21 @@ class DrugServiceTest {
 
             DrugEntity e1 = DrugEntity.builder().drugId(1).drugName("A2").build();
             DrugEntity e2 = DrugEntity.builder().drugId(2).drugName("B2").build();
-            when(drugRepository.findAll(ArgumentMatchers.<Specification<DrugEntity>>any(), eq(pageable)))
-                    .thenReturn(new PageImpl<>(List.of(e1, e2), pageable, 2));
+            when(drugRepository.findAll(ArgumentMatchers.<Specification<DrugEntity>>any(), eq(pageable))).thenReturn(new PageImpl<>(List.of(e1, e2), pageable, 2));
 
-            DrugDTO d1 = DrugDTO.builder().drugId(1).drugName("A2").build();
-            DrugDTO d2 = DrugDTO.builder().drugId(2).drugName("B2").build();
+            DrugResponse d1 = DrugResponse.builder().drugId(1).drugName("A2").build();
+            DrugResponse d2 = DrugResponse.builder().drugId(2).drugName("B2").build();
             when(drugMapper.mapToDTO(any(DrugEntity.class))).thenReturn(d1, d2);
 
-            Page<DrugDTO> page = drugService.searchDrugs("", "PILLS", false, null, null, pageable);
+            Page<DrugResponse> page = drugService.searchDrugs("", "PILLS", false, null, null, pageable);
             assertThat(page.getTotalElements()).isEqualTo(2);
-            assertThat(page.getContent())
-                .extracting(DrugDTO::getDrugId, DrugDTO::getDrugName)
-                .containsExactly(
-                    tuple(1, "A2"),
-                    tuple(2, "B2")
-                );
+            assertThat(page.getContent()).extracting(DrugResponse::getDrugId, DrugResponse::getDrugName).containsExactly(tuple(1, "A2"), tuple(2, "B2"));
         }
+
         @Test
         void shouldThrowOnInvalidFormValue() {
             Pageable pageable = PageRequest.of(0, 10);
-            assertThatThrownBy(() -> drugService.searchDrugs("", "UNKNOWN", null,
-                    null, null, pageable))
-                    .isInstanceOf(IllegalArgumentException.class)
-                    .hasMessageContaining("Invalid drug form");
+            assertThatThrownBy(() -> drugService.searchDrugs("", "UNKNOWN", null, null, null, pageable)).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Invalid drug form");
         }
 
         @Test
@@ -377,17 +372,13 @@ class DrugServiceTest {
             Pageable pageable = PageRequest.of(0, 10);
             DrugEntity e = DrugEntity.builder().drugId(1).drugName("Old").build();
 
-            when(drugRepository.findAll(ArgumentMatchers.<Specification<DrugEntity>>any(), eq(pageable)))
-                    .thenReturn(new PageImpl<>(List.of(e), pageable, 1));
-            when(drugMapper.mapToDTO(e)).thenReturn(DrugDTO.builder().drugId(1).drugName("Old").build());
+            when(drugRepository.findAll(ArgumentMatchers.<Specification<DrugEntity>>any(), eq(pageable))).thenReturn(new PageImpl<>(List.of(e), pageable, 1));
+            when(drugMapper.mapToDTO(e)).thenReturn(DrugResponse.builder().drugId(1).drugName("Old").build());
 
-            Page<DrugDTO> page = drugService.searchDrugs("", null, true, null,
-                    null, pageable);
+            Page<DrugResponse> page = drugService.searchDrugs("", null, true, null, null, pageable);
 
             assertThat(page.getTotalElements()).isEqualTo(1);
-            assertThat(page.getContent())
-                    .extracting(DrugDTO::getDrugId, DrugDTO::getDrugName)
-                    .containsExactly(tuple(1, "Old"));
+            assertThat(page.getContent()).extracting(DrugResponse::getDrugId, DrugResponse::getDrugName).containsExactly(tuple(1, "Old"));
         }
 
         @Test
@@ -395,28 +386,22 @@ class DrugServiceTest {
             Pageable pageable = PageRequest.of(0, 10);
             DrugEntity e = DrugEntity.builder().drugId(2).drugName("Fresh").build();
 
-            when(drugRepository.findAll(ArgumentMatchers.<Specification<DrugEntity>>any(), eq(pageable)))
-                    .thenReturn(new PageImpl<>(List.of(e), pageable, 1));
-            when(drugMapper.mapToDTO(e)).thenReturn(DrugDTO.builder().drugId(2).drugName("Fresh").build());
+            when(drugRepository.findAll(ArgumentMatchers.<Specification<DrugEntity>>any(), eq(pageable))).thenReturn(new PageImpl<>(List.of(e), pageable, 1));
+            when(drugMapper.mapToDTO(e)).thenReturn(DrugResponse.builder().drugId(2).drugName("Fresh").build());
 
-            Page<DrugDTO> page = drugService.searchDrugs("", null, false, null,
-                    null, pageable);
+            Page<DrugResponse> page = drugService.searchDrugs("", null, false, null, null, pageable);
 
             assertThat(page.getTotalElements()).isEqualTo(1);
-            assertThat(page.getContent())
-                    .extracting(DrugDTO::getDrugId, DrugDTO::getDrugName)
-                    .containsExactly(tuple(2, "Fresh"));
+            assertThat(page.getContent()).extracting(DrugResponse::getDrugId, DrugResponse::getDrugName).containsExactly(tuple(2, "Fresh"));
         }
 
         @Test
         void shouldAcceptYearAndMonthTogether() {
             Pageable pageable = PageRequest.of(0, 10);
 
-            when(drugRepository.findAll(ArgumentMatchers.<Specification<DrugEntity>>any(), eq(pageable)))
-                    .thenReturn(new PageImpl<>(List.of(), pageable, 0));
+            when(drugRepository.findAll(ArgumentMatchers.<Specification<DrugEntity>>any(), eq(pageable))).thenReturn(new PageImpl<>(List.of(), pageable, 0));
 
-            Page<DrugDTO> page = drugService.searchDrugs("", null, null, YEAR_NOW_PLUS_1,
-                    3, pageable);
+            Page<DrugResponse> page = drugService.searchDrugs("", null, null, YEAR_NOW_PLUS_1, 3, pageable);
 
             assertThat(page).isNotNull();
             verify(drugRepository).findAll(ArgumentMatchers.<Specification<DrugEntity>>any(), eq(pageable));
@@ -428,16 +413,13 @@ class DrugServiceTest {
             // Here we verify wiring: non-blank name is accepted, repo is called with a Specification, and results are mapped.
             Pageable pageable = PageRequest.of(0, 10);
             DrugEntity e = DrugEntity.builder().drugId(10).drugName("Profen").build();
-            when(drugRepository.findAll(ArgumentMatchers.<Specification<DrugEntity>>any(), eq(pageable)))
-                    .thenReturn(new PageImpl<>(List.of(e), pageable, 1));
-            when(drugMapper.mapToDTO(e)).thenReturn(DrugDTO.builder().drugId(10).drugName("Profen").build());
+            when(drugRepository.findAll(ArgumentMatchers.<Specification<DrugEntity>>any(), eq(pageable))).thenReturn(new PageImpl<>(List.of(e), pageable, 1));
+            when(drugMapper.mapToDTO(e)).thenReturn(DrugResponse.builder().drugId(10).drugName("Profen").build());
 
-            Page<DrugDTO> page = drugService.searchDrugs("  proF  ", null, null, null, null, pageable);
+            Page<DrugResponse> page = drugService.searchDrugs("  proF  ", null, null, null, null, pageable);
 
             assertThat(page.getTotalElements()).isEqualTo(1);
-            assertThat(page.getContent())
-                    .extracting(DrugDTO::getDrugId, DrugDTO::getDrugName)
-                    .containsExactly(tuple(10, "Profen"));
+            assertThat(page.getContent()).extracting(DrugResponse::getDrugId, DrugResponse::getDrugName).containsExactly(tuple(10, "Profen"));
             verify(drugRepository).findAll(ArgumentMatchers.<Specification<DrugEntity>>any(), eq(pageable));
         }
     }

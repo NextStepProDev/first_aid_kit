@@ -4,6 +4,7 @@ import com.firstaid.infrastructure.database.entity.RoleEntity;
 import com.firstaid.infrastructure.database.entity.UserEntity;
 import com.firstaid.infrastructure.database.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.jspecify.annotations.NonNull;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -22,7 +23,7 @@ public class CustomUserDetailService implements UserDetailsService {
 
     @Override
     @Transactional(readOnly = true)
-    public UserDetails loadUserByUsername(String email) {
+    public @NonNull UserDetails loadUserByUsername(@NonNull String email) {
         UserEntity user = userRepository.findByEmail(email);
         if (user == null) {
             throw new UsernameNotFoundException("User not found: " + email);

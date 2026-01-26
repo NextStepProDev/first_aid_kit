@@ -24,13 +24,13 @@ public class AlertController {
     private final DrugService drugService;
 
     @PostMapping("/alert")
-    @Operation(summary = "Send expiry alerts", description = "Sends expiry alert emails for the current user's drugs expiring within the next month")
+    @Operation(summary = "Send expniry alerts", description = "Sends expiry alert emails for the current user's drugs expiring within the next month")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Alerts sent successfully"),
             @ApiResponse(responseCode = "401", description = "Unauthorized - JWT token required")
     })
-    public ResponseEntity<String> sendAlerts() {
-        drugService.sendDefaultExpiryAlertEmailsForCurrentUser();
-        return ResponseEntity.ok("Expiry alert emails have been sent");
+    public ResponseEntity<Integer> sendAlerts() {
+        int count = drugService.sendDefaultExpiryAlertEmailsForCurrentUser();
+        return ResponseEntity.ok(count);
     }
 }

@@ -1,6 +1,6 @@
 package com.firstaid.controller.drug;
 
-import com.firstaid.controller.dto.*;
+import com.firstaid.controller.dto.drug.*;
 import com.firstaid.infrastructure.pdf.PdfExportService;
 import com.firstaid.service.DrugService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -39,21 +39,21 @@ public class DrugController {
     private final PdfExportService pdfExportService;
 
     private static final int MAX_SEARCH_PAGE_SIZE = 100;
-    private static final int MAX_PDF_PAGE_SIZE = 100;
+    private static final int MAX_PDF_PAGE_SIZE = 1000;
 
 
     @GetMapping("/{id}")
     @Operation(summary = "Get drug by ID", description = "Returns a drug by its ID or 404 if not found")
-    public DrugDTO getDrugById(@PathVariable @Min(value = 1, message = "ID must be >= 1") Integer id) {
+    public DrugResponse getDrugById(@PathVariable @Min(value = 1, message = "ID must be >= 1") Integer id) {
         log.info("Fetching drug with ID: {}", id);
         return drugService.getDrugById(id);
     }
 
     @PostMapping
     @Operation(summary = "Add new drug", description = "Adds a new drug to the database")
-    public ResponseEntity<DrugDTO> addDrug(@RequestBody @Valid DrugRequestDTO dto) {
+    public ResponseEntity<DrugResponse> addDrug(@RequestBody @Valid DrugCreateRequest dto) {
         log.info("Adding new drug with name: {}", dto.getName());
-        DrugDTO addedDrug = drugService.addNewDrug(dto);
+        DrugResponse addedDrug = drugService.addNewDrug(dto);
         Integer id = (addedDrug != null) ? addedDrug.getDrugId() : null;
         log.info("Drug added successfully{}", id != null ? " with ID: " + id : "");
         return ResponseEntity.status(HttpStatus.CREATED).body(addedDrug);
@@ -69,7 +69,7 @@ public class DrugController {
 
     @PutMapping("/{id}")
     @Operation(summary = "Update drug by ID", description = "Updates an existing drug using the given ID and data")
-    public ResponseEntity<Void> updateDrug(@PathVariable Integer id, @Valid @RequestBody DrugRequestDTO dto) {
+    public ResponseEntity<Void> updateDrug(@PathVariable Integer id, @Valid @RequestBody DrugCreateRequest dto) {
         log.info("Updating drug with ID: {}", id);
         drugService.updateDrug(id, dto);
         log.info("Drug with ID: {} updated successfully", id);
@@ -108,7 +108,7 @@ public class DrugController {
             @RequestParam(required = false) String name,
             @RequestParam(required = false) String form,
             @RequestParam(required = false) Boolean expired,
-            @RequestParam(required = false) @Min(value = 2024, message = "Year must be >= 2024")
+            @RequestParam(required = false) @Min(value = 2025, message = "Year must be >= 2025")
             @Max(value = 2100, message = "Year must be <= 2100") Integer expirationUntilYear,
             @RequestParam(required = false)
             @Min(value = 1, message = "Bro, months start from 1, not below.")
@@ -118,10 +118,10 @@ public class DrugController {
         if (pageable.getPageSize() > MAX_PDF_PAGE_SIZE) {
             throw new IllegalArgumentException("Maximum page size for PDF export is " + MAX_PDF_PAGE_SIZE + ".");
         }
-        Page<DrugDTO> resultPage = drugService.searchDrugs(
+        Page<DrugResponse> resultPage = drugService.searchDrugs(
                 name, form, expired, expirationUntilYear, expirationUntilMonth, pageable
         );
-        List<DrugDTO> drugs = resultPage.getContent();
+        List<DrugResponse> drugs = resultPage.getContent();
         byte[] pdf = pdfExportService.generatePdf(drugs);
 
         HttpHeaders headers = new HttpHeaders();
@@ -137,9 +137,9 @@ public class DrugController {
     @GetMapping("/statistics")
     @Operation(summary = "Retrieve drug statistics", description = "Returns statistics including total, expired, " +
             "active drugs, alerts sent, and a breakdown by form")
-    public ResponseEntity<DrugStatisticsDTO> getDrugStatistics() {
+    public ResponseEntity<DrugStatistics> getDrugStatistics() {
         log.info("Fetching drug statistics");
-        DrugStatisticsDTO stats = drugService.getDrugStatistics();
+        DrugStatistics stats = drugService.getDrugStatistics();
         return ResponseEntity.ok(stats);
     }
 
@@ -160,7 +160,7 @@ public class DrugController {
     - Maximum page size for /search: 100
     """
     )
-    public Page<DrugDTO> searchDrugs(
+    public Page<DrugResponse> searchDrugs(
         @RequestParam(required = false) String name,
         @RequestParam(required = false) String form,
         @RequestParam(required = false) Boolean expired,

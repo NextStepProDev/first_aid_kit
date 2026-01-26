@@ -3,18 +3,11 @@ package com.firstaid.controller.handler;
 import com.firstaid.controller.dto.error.ErrorMessage;
 import com.firstaid.controller.dto.error.FieldValidationError;
 import com.firstaid.controller.dto.error.ValidationErrorMessageDTO;
-import com.firstaid.domain.exception.AccountLockedException;
-import com.firstaid.domain.exception.DrugNotFoundException;
-import com.firstaid.domain.exception.EmailSendingException;
-import com.firstaid.domain.exception.InvalidPasswordException;
-import com.firstaid.domain.exception.InvalidSortFieldException;
-import com.firstaid.domain.exception.InvalidTokenException;
-import com.firstaid.domain.exception.PasswordMismatchException;
-import com.firstaid.domain.exception.UserNotFoundException;
+import com.firstaid.domain.exception.*;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.core.PropertyReferenceException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.core.PropertyReferenceException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -39,7 +32,6 @@ public class GlobalExceptionHandler {
 
     // Handles MethodArgumentNotValidException when a method argument validation fails (e.g., DTO validation).
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    @SuppressWarnings("unused")
     public ResponseEntity<ValidationErrorMessageDTO> handleValidationErrors(MethodArgumentNotValidException ex) {
         List<FieldValidationError> errors = ex.getBindingResult().getFieldErrors().stream()
                 .collect(Collectors.toMap(
@@ -68,7 +60,6 @@ public class GlobalExceptionHandler {
 
     // Handles MethodArgumentTypeMismatchException when a method argument type does not match the expected type (e.g. 1,5 to Integer).
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    @SuppressWarnings("unused")
     public ResponseEntity<ErrorMessage> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
         String message = String.format("Invalid value for parameter '%s': %s", ex.getName(), ex.getValue());
         log.warn("Type mismatch: {}", message);
@@ -79,21 +70,18 @@ public class GlobalExceptionHandler {
 
 
     @ExceptionHandler(DrugNotFoundException.class)
-    @SuppressWarnings("unused")
     public ResponseEntity<ErrorMessage> handleDrugNotFound(DrugNotFoundException ex) {
         log.warn("Drug not found: {}", ex.getMessage());
         return ResponseEntity.status(404).body(new ErrorMessage(404, ex.getMessage()));
     }
 
     @ExceptionHandler(UserNotFoundException.class)
-    @SuppressWarnings("unused")
     public ResponseEntity<ErrorMessage> handleUserNotFound(UserNotFoundException ex) {
         log.warn("User not found: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new ErrorMessage(404, ex.getMessage()));
     }
 
     @ExceptionHandler(Exception.class)
-    @SuppressWarnings("unused")
     public ResponseEntity<ErrorMessage> handleGeneralException(Exception ex) {
         log.error("Unhandled exception", ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -102,7 +90,6 @@ public class GlobalExceptionHandler {
 
 
     @ExceptionHandler(InvalidSortFieldException.class)
-    @SuppressWarnings("unused")
     public ResponseEntity<ErrorMessage> handleInvalidSortFieldException(InvalidSortFieldException ex) {
         log.warn("Invalid sort field: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -110,7 +97,6 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    @SuppressWarnings("unused")
     public ResponseEntity<ErrorMessage> handleHttpMessageNotReadable(HttpMessageNotReadableException ex) {
         log.warn("Malformed JSON request: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -118,7 +104,6 @@ public class GlobalExceptionHandler {
     }
 
     // Handles IllegalArgumentException when an invalid argument is passed to a method.
-    @SuppressWarnings("unused")
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<ErrorMessage> handleIllegalArgument(IllegalArgumentException ex) {
         log.warn("Illegal argument: {}", ex.getMessage());
@@ -129,7 +114,6 @@ public class GlobalExceptionHandler {
 
     // Handles EmailSendingException when there is an error sending an email.
     @ExceptionHandler(EmailSendingException.class)
-    @SuppressWarnings("unused")
     public ResponseEntity<ErrorMessage> handleEmailSendingException(EmailSendingException ex) {
         log.error("Email sending failed", ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -138,7 +122,6 @@ public class GlobalExceptionHandler {
 
     // Handles MissingServletRequestParameterException when a required request parameter is missing.
     @ExceptionHandler(MissingServletRequestParameterException.class)
-    @SuppressWarnings("unused")
     public ResponseEntity<ErrorMessage> handleMissingParam(MissingServletRequestParameterException ex) {
         log.warn("Missing request parameter: {}", ex.getParameterName());
         String message = "Missing required request parameter: " + ex.getParameterName();
@@ -149,7 +132,6 @@ public class GlobalExceptionHandler {
 
     // Handles ConstraintViolationException when a constraint on a bean property is violated. (@Valid, @Min, @Max, etc.)
     @ExceptionHandler(ConstraintViolationException.class)
-    @SuppressWarnings("unused")
     public ResponseEntity<ErrorMessage> handleConstraintViolation(ConstraintViolationException ex) {
         String message = ex.getConstraintViolations().stream()
                 .map(v -> v.getPropertyPath() + ": " + v.getMessage())
@@ -165,7 +147,6 @@ public class GlobalExceptionHandler {
 
     // Handles invalid property references raised by Spring Data (e.g., bad sort field or derived query property)
     @ExceptionHandler(PropertyReferenceException.class)
-    @SuppressWarnings("unused")
     public ResponseEntity<ErrorMessage> handlePropertyReferenceException(PropertyReferenceException ex) {
         Class<?> rawType = ex.getType().getType();
         String entityType = rawType.getSimpleName();
@@ -178,7 +159,6 @@ public class GlobalExceptionHandler {
 
     // e.g. /api/drugsf/
     @ExceptionHandler(NoResourceFoundException.class)
-    @SuppressWarnings("unused")
     public ResponseEntity<ErrorMessage> handleNoResourceFound(NoResourceFoundException ex) {
         log.warn("No resource found: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -186,7 +166,6 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(BadCredentialsException.class)
-    @SuppressWarnings("unused")
     public ResponseEntity<ErrorMessage> handleBadCredentials(BadCredentialsException ex) {
         log.warn("Bad credentials: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -194,7 +173,6 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(AccountLockedException.class)
-    @SuppressWarnings("unused")
     public ResponseEntity<ErrorMessage> handleAccountLocked(AccountLockedException ex) {
         log.warn("Account locked: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.LOCKED)
@@ -202,7 +180,6 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(InvalidPasswordException.class)
-    @SuppressWarnings("unused")
     public ResponseEntity<ErrorMessage> handleInvalidPassword(InvalidPasswordException ex) {
         log.warn("Invalid password: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -210,7 +187,6 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(InvalidTokenException.class)
-    @SuppressWarnings("unused")
     public ResponseEntity<ErrorMessage> handleInvalidToken(InvalidTokenException ex) {
         log.warn("Invalid token: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -218,7 +194,6 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(PasswordMismatchException.class)
-    @SuppressWarnings("unused")
     public ResponseEntity<ErrorMessage> handlePasswordMismatch(PasswordMismatchException ex) {
         log.warn("Password mismatch: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
@@ -226,7 +201,6 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(AuthenticationException.class)
-    @SuppressWarnings("unused")
     public ResponseEntity<ErrorMessage> handleAuthenticationException(AuthenticationException ex) {
         log.warn("Authentication failed: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -234,7 +208,6 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(AccessDeniedException.class)
-    @SuppressWarnings("unused")
     public ResponseEntity<ErrorMessage> handleAccessDenied(AccessDeniedException ex) {
         log.warn("Access denied: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.FORBIDDEN)
@@ -242,7 +215,6 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(IllegalStateException.class)
-    @SuppressWarnings("unused")
     public ResponseEntity<ErrorMessage> handleIllegalStateException(IllegalStateException ex) {
         log.error("Illegal state: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -250,7 +222,6 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
-    @SuppressWarnings("unused")
     public ResponseEntity<ErrorMessage> handleDataIntegrityViolation(DataIntegrityViolationException ex) {
         log.warn("Data integrity violation: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.CONFLICT)

@@ -70,13 +70,14 @@ app:
   frontend:
     # When frontend is ready, set FRONTEND_URL env variable to point to it
     # If not set, the app will use the current server URL dynamically
-    url: ${FRONTEND_URL:}
+    url: ${FRONTEND_URL:http://localhost:3000}
   cors:
     # Comma-separated list of allowed origins for CORS
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
   rate-limit:
     enabled: true
     requests-per-minute: 20
+
 
 # Actuator Configuration
 management:

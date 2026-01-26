@@ -1,14 +1,17 @@
 package com.firstaid.infrastructure.bootstrap;
 
-import com.firstaid.controller.dto.DrugFormDTO;
+import com.firstaid.controller.dto.drug.DrugFormDTO;
 import com.firstaid.infrastructure.database.entity.DrugEntity;
+import com.firstaid.infrastructure.database.entity.RoleEntity;
 import com.firstaid.infrastructure.database.entity.UserEntity;
 import com.firstaid.infrastructure.database.repository.DrugRepository;
+import com.firstaid.infrastructure.database.repository.RoleRepository;
 import com.firstaid.infrastructure.database.repository.UserRepository;
 import com.firstaid.infrastructure.util.DateUtils;
 import com.firstaid.service.DrugFormService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.jspecify.annotations.NonNull;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 import org.springframework.context.ApplicationEvent;
@@ -16,12 +19,15 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.context.event.SmartApplicationListener;
 import org.springframework.core.Ordered;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.lang.NonNull;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
+
+import java.time.OffsetDateTime;
+import java.util.Set;
 
 @Slf4j
 @Component
-@Profile("!test")
+@Profile({"!test", "dev"})
 @RequiredArgsConstructor
 @jakarta.annotation.Generated("bootstrap")
 public class BootstrapApplicationComponent implements SmartApplicationListener {
@@ -43,6 +49,8 @@ public class BootstrapApplicationComponent implements SmartApplicationListener {
     private final DrugFormService drugFormService;
     private final JdbcTemplate jdbcTemplate;
     private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
+    private final PasswordEncoder passwordEncoder;
 
     // To jest bardzo ciekawy mechanizm. Ta klasa powoduje, że podczas wstawania spring możemy się wpiąć do niego,
     // żeby zrobił dla nas kilka rzeczy. W tym przypadku podczas uruchamiania kontekstu będą wykonywane poniższe rzeczy
@@ -51,9 +59,41 @@ public class BootstrapApplicationComponent implements SmartApplicationListener {
     public void onApplicationEvent(@NonNull ApplicationEvent event) {
         // Ensure Flyway migrations are run before seeding data
 
-        if ("local".equals(profile)) {
+        if ("dev".equals(profile)) {
             resetUserSequences();
         }
+
+        // 1. CZYŚCIMY (CASCADE załatwi relacje, jeśli jakieś są)
+        jdbcTemplate.execute("TRUNCATE TABLE app_user_role CASCADE");
+        jdbcTemplate.execute("TRUNCATE TABLE app_user CASCADE");
+        jdbcTemplate.execute("TRUNCATE TABLE role CASCADE");
+
+        // 2. RESETUJEMY LICZNIKI (żeby Mateusz miał ID=1)
+        jdbcTemplate.execute("ALTER SEQUENCE app_user_user_id_seq RESTART WITH 1");
+        jdbcTemplate.execute("ALTER SEQUENCE role_role_id_seq RESTART WITH 1");
+
+        // 3. TWORZYMY ROLE
+        RoleEntity adminRole = new RoleEntity();
+        adminRole.setRole("ADMIN");
+        roleRepository.save(adminRole);
+
+        RoleEntity userRole = new RoleEntity();
+        userRole.setRole("USER");
+        roleRepository.save(userRole);
+
+        // 4. DODAJEMY TWOJEGO ADMINA (djdefkon)
+        UserEntity admin = new UserEntity();
+        admin.setUserName("Mateusz");
+        admin.setEmail("djdefkon@gmail.com");
+        // Używamy passwordEncoder, żeby było bezpiecznie i spójnie
+        admin.setPassword(passwordEncoder.encode("test"));
+        admin.setName("Mateusz Nawratek");
+        admin.setActive(true);
+        admin.setCreatedAt(OffsetDateTime.now());
+        admin.setRole(Set.of(adminRole, userRole));
+
+        userRepository.save(admin);
+
         // Get default owner (first user - admin)
         jdbcTemplate.queryForList("SELECT * FROM app_user").forEach(row ->
                 log.info("DB row: {}", row)
@@ -67,7 +107,7 @@ public class BootstrapApplicationComponent implements SmartApplicationListener {
         resetSequence();
 
         insertDrug("Altacet", DrugFormDTO.GEL, 2025, 4, "Lek przeciwbólowy w formie żelu.", defaultOwner);
-//        insertDrug("Centrum Junior", DrugFormDTO.PILLS, 2025, 4, "Witaminy dla dzieci", defaultOwner);
+        insertDrug("Centrum Junior", DrugFormDTO.PILLS, 2025, 4, "Witaminy dla dzieci", defaultOwner);
         insertDrug("Helicid 20", DrugFormDTO.PILLS, 2025, 6, "lek zawierający omeprazol, " +
                 "inhibitor pompy protonowej, który zmniejsza wydzielanie " +
                 "kwasu solnego w żołądku. Stosowany jest w leczeniu choroby refluksowej przełyku, owrzodzeń " +

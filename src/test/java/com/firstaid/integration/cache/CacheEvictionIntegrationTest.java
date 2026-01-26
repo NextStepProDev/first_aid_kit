@@ -1,10 +1,11 @@
 package com.firstaid.integration.cache;
 
-import com.firstaid.controller.dto.DrugStatisticsDTO;
+import com.firstaid.controller.dto.drug.DrugStatistics;
 import com.firstaid.infrastructure.database.entity.DrugEntity;
 import com.firstaid.infrastructure.database.entity.DrugFormEntity;
 import com.firstaid.infrastructure.database.repository.DrugFormRepository;
 import com.firstaid.infrastructure.email.EmailService;
+import com.firstaid.infrastructure.util.DateUtils;
 import com.firstaid.integration.base.AbstractIntegrationTest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -21,7 +22,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * Integration tests verifying that cache is properly evicted when sending expiry alerts.
- *
  * This test exists to catch bugs related to Spring AOP proxy behavior with @CacheEvict.
  * When a method with @CacheEvict calls another method in the same class internally,
  * the cache eviction annotation on the inner method is NOT executed (because internal
@@ -54,7 +54,8 @@ class CacheEvictionIntegrationTest extends AbstractIntegrationTest {
         DrugFormEntity pillsForm = drugFormRepository.findByNameIgnoreCase("PILLS")
                 .orElseThrow(() -> new IllegalStateException("PILLS form not found"));
 
-        OffsetDateTime expirationDate = OffsetDateTime.now().plusDays(15);
+        OffsetDateTime expirationDate =
+                DateUtils.buildExpirationDate(OffsetDateTime.now().getYear(), OffsetDateTime.now().getMonthValue());
         DrugEntity expiringDrug = DrugEntity.builder()
                 .drugName("Expiring Drug")
                 .drugDescription("Test drug for cache eviction")
@@ -66,11 +67,11 @@ class CacheEvictionIntegrationTest extends AbstractIntegrationTest {
         drugRepository.save(expiringDrug);
 
         // when: first call to statistics - cache gets populated
-        ResponseEntity<DrugStatisticsDTO> firstStatsResponse = restTemplate.getForEntity(
-                getUrl("/api/drugs/statistics"), DrugStatisticsDTO.class);
+        ResponseEntity<DrugStatistics> firstStatsResponse = restTemplate.getForEntity(
+                getUrl("/api/drugs/statistics"), DrugStatistics.class);
 
         assertThat(firstStatsResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-        DrugStatisticsDTO firstStats = firstStatsResponse.getBody();
+        DrugStatistics firstStats = firstStatsResponse.getBody();
         assertThat(firstStats).isNotNull();
         assertThat(firstStats.getAlertSentCount()).isEqualTo(0L);
 
@@ -83,11 +84,11 @@ class CacheEvictionIntegrationTest extends AbstractIntegrationTest {
         // then: second call to statistics should reflect the updated alertSentCount
         // If cache was NOT evicted, we would still get alertSentCount = 0 (stale cached value)
         // If cache WAS evicted, we should get alertSentCount = 1 (fresh value from DB)
-        ResponseEntity<DrugStatisticsDTO> secondStatsResponse = restTemplate.getForEntity(
-                getUrl("/api/drugs/statistics"), DrugStatisticsDTO.class);
+        ResponseEntity<DrugStatistics> secondStatsResponse = restTemplate.getForEntity(
+                getUrl("/api/drugs/statistics"), DrugStatistics.class);
 
         assertThat(secondStatsResponse.getStatusCode()).isEqualTo(HttpStatus.OK);
-        DrugStatisticsDTO secondStats = secondStatsResponse.getBody();
+        DrugStatistics secondStats = secondStatsResponse.getBody();
         assertThat(secondStats).isNotNull();
         assertThat(secondStats.getAlertSentCount())
                 .as("alertSentCount should be updated after sending alerts (cache should be evicted)")
@@ -108,7 +109,8 @@ class CacheEvictionIntegrationTest extends AbstractIntegrationTest {
         DrugFormEntity pillsForm = drugFormRepository.findByNameIgnoreCase("PILLS")
                 .orElseThrow(() -> new IllegalStateException("PILLS form not found"));
 
-        OffsetDateTime expirationDate = OffsetDateTime.now().plusDays(10);
+        OffsetDateTime expirationDate =
+                DateUtils.buildExpirationDate(OffsetDateTime.now().getYear(), OffsetDateTime.now().getMonthValue());
 
         for (int i = 1; i <= 3; i++) {
             DrugEntity drug = DrugEntity.builder()
@@ -123,8 +125,8 @@ class CacheEvictionIntegrationTest extends AbstractIntegrationTest {
         }
 
         // when: populate cache
-        ResponseEntity<DrugStatisticsDTO> cachedResponse = restTemplate.getForEntity(
-                getUrl("/api/drugs/statistics"), DrugStatisticsDTO.class);
+        ResponseEntity<DrugStatistics> cachedResponse = restTemplate.getForEntity(
+                getUrl("/api/drugs/statistics"), DrugStatistics.class);
         assertThat(cachedResponse.getBody()).isNotNull();
         assertThat(cachedResponse.getBody().getAlertSentCount()).isEqualTo(0L);
         assertThat(cachedResponse.getBody().getTotalDrugs()).isEqualTo(3L);
@@ -133,8 +135,8 @@ class CacheEvictionIntegrationTest extends AbstractIntegrationTest {
         restTemplate.postForEntity(getUrl("/api/email/alert"), null, String.class);
 
         // then: fresh data should be returned, not stale cache
-        ResponseEntity<DrugStatisticsDTO> freshResponse = restTemplate.getForEntity(
-                getUrl("/api/drugs/statistics"), DrugStatisticsDTO.class);
+        ResponseEntity<DrugStatistics> freshResponse = restTemplate.getForEntity(
+                getUrl("/api/drugs/statistics"), DrugStatistics.class);
 
         assertThat(freshResponse.getBody()).isNotNull();
         assertThat(freshResponse.getBody().getAlertSentCount())

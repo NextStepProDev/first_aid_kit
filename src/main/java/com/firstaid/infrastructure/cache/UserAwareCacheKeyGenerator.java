@@ -2,6 +2,7 @@ package com.firstaid.infrastructure.cache;
 
 import com.firstaid.infrastructure.security.CurrentUserService;
 import lombok.RequiredArgsConstructor;
+import org.jspecify.annotations.NonNull;
 import org.springframework.cache.interceptor.KeyGenerator;
 import org.springframework.stereotype.Component;
 
@@ -21,7 +22,8 @@ public class UserAwareCacheKeyGenerator implements KeyGenerator {
     private final CurrentUserService currentUserService;
 
     @Override
-    public Object generate(Object target, Method method, Object... params) {
+    @NonNull
+    public Object generate(@NonNull Object target, @NonNull Method method, Object @NonNull ... params) {
         Integer userId = currentUserService.getCurrentUserId();
 
         String paramsKey = Arrays.stream(params)

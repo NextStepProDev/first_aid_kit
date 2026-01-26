@@ -1,4 +1,4 @@
-package com.firstaid.controller.dto;
+package com.firstaid.controller.dto.drug;
 
 import com.firstaid.infrastructure.validation.NotBeforeCurrentMonth;
 import com.firstaid.infrastructure.validation.NotBeforeCurrentYear;
@@ -15,7 +15,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder(toBuilder = true)
-public class DrugRequestDTO {
+public class DrugCreateRequest {
 
     @NotBlank(message = "Drug name must not be blank")
     @Size(min = 2, max = 100, message = "Drug name must be between 2 and 100 characters")

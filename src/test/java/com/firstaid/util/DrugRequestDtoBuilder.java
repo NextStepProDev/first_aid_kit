@@ -1,14 +1,14 @@
 package com.firstaid.util;
 
-import com.firstaid.controller.dto.DrugRequestDTO;
+import com.firstaid.controller.dto.drug.DrugCreateRequest;
 
 import java.time.OffsetDateTime;
 
 public class DrugRequestDtoBuilder {
     static int currentYear = OffsetDateTime.now().getYear() + 1;
 
-    public static DrugRequestDTO getValidDrugRequestDto() {
-        return DrugRequestDTO.builder()
+    public static DrugCreateRequest getValidDrugRequestDto() {
+        return DrugCreateRequest.builder()
                 .name("Aspirin")
                 .form("PILLS")
                 .description("A common pain reliever")

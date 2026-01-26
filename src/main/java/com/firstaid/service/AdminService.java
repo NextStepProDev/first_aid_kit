@@ -1,5 +1,6 @@
 package com.firstaid.service;
 
+import com.firstaid.controller.dto.admin.BroadcastEmailRequest;
 import com.firstaid.controller.dto.admin.UserResponse;
 import com.firstaid.domain.exception.InvalidPasswordException;
 import com.firstaid.domain.exception.UserNotFoundException;
@@ -7,6 +8,7 @@ import com.firstaid.infrastructure.database.entity.RoleEntity;
 import com.firstaid.infrastructure.database.entity.UserEntity;
 import com.firstaid.infrastructure.database.repository.DrugRepository;
 import com.firstaid.infrastructure.database.repository.UserRepository;
+import com.firstaid.infrastructure.email.EmailService;
 import com.firstaid.infrastructure.security.CurrentUserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,6 +19,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -29,6 +32,7 @@ public class AdminService {
     private final DrugRepository drugRepository;
     private final PasswordEncoder passwordEncoder;
     private final CurrentUserService currentUserService;
+    private final EmailService emailService;
 
     @Transactional(readOnly = true)
     public Page<UserResponse> getAllUsers(Pageable pageable) {
@@ -83,5 +87,50 @@ public class AdminService {
 
         userRepository.delete(userToDelete);
         log.info("Admin {} deleted user account: {}", adminEmail, deletedUserEmail);
+    }
+
+    @Transactional(readOnly = true)
+    public int broadcastEmail(BroadcastEmailRequest request) {
+        String adminEmail = currentUserService.getCurrentUserEmail();
+        List<UserEntity> users = userRepository.findAll();
+
+        int sentCount = 0;
+        for (UserEntity user : users) {
+            if (user.getActive()) {
+                emailService.sendEmailAsync(user.getEmail(), request.subject(), request.message());
+                sentCount++;
+            }
+        }
+
+        log.info("Admin {} sent broadcast email '{}' to {} users", adminEmail, request.subject(), sentCount);
+        return sentCount;
+    }
+
+    @Transactional(readOnly = true)
+    public String exportEmailsCsv() {
+        String adminEmail = currentUserService.getCurrentUserEmail();
+        List<UserEntity> users = userRepository.findAll();
+
+        StringBuilder csv = new StringBuilder();
+        csv.append("email,name,username,active,created_at\n");
+
+        for (UserEntity user : users) {
+            csv.append(escapeCsv(user.getEmail())).append(",");
+            csv.append(escapeCsv(user.getName() != null ? user.getName() : "")).append(",");
+            csv.append(escapeCsv(user.getUserName())).append(",");
+            csv.append(user.getActive()).append(",");
+            csv.append(user.getCreatedAt() != null ? user.getCreatedAt().toString() : "").append("\n");
+        }
+
+        log.info("Admin {} exported {} user emails to CSV", adminEmail, users.size());
+        return csv.toString();
+    }
+
+    private String escapeCsv(String value) {
+        if (value == null) return "";
+        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+            return "\"" + value.replace("\"", "\"\"") + "\"";
+        }
+        return value;
     }
 }

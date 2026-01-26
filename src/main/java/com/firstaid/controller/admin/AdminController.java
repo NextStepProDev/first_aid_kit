@@ -1,8 +1,14 @@
 package com.firstaid.controller.admin;
 
+import com.firstaid.controller.dto.admin.BroadcastEmailRequest;
 import com.firstaid.controller.dto.admin.DeleteUserRequest;
 import com.firstaid.controller.dto.admin.UserResponse;
+import com.firstaid.controller.dto.auth.MessageResponse;
+import com.firstaid.domain.exception.ResourceNotFoundException;
+import com.firstaid.infrastructure.database.entity.UserEntity;
+import com.firstaid.infrastructure.email.EmailService;
 import com.firstaid.service.AdminService;
+import com.firstaid.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -16,10 +22,13 @@ import jakarta.validation.constraints.Positive;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.SortDefault;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.data.web.SortDefault;
 
 @RestController
 @RequestMapping("/api/admin")
@@ -30,6 +39,8 @@ import org.springframework.data.web.SortDefault;
 public class AdminController {
 
     private final AdminService adminService;
+    private final UserService userService;
+    private final EmailService emailService;
 
     @GetMapping("/users")
     @Operation(summary = "List all users",
@@ -72,5 +83,53 @@ public class AdminController {
             @Parameter(description = "ID of user to delete") @Positive @PathVariable Integer userId,
             @Valid @RequestBody DeleteUserRequest request) {
         adminService.deleteUser(userId, request.password());
+    }
+
+    @PostMapping("/broadcast")
+    @Operation(summary = "Send broadcast email",
+            description = "Sends an email to all active users in the system.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Email sent successfully"),
+            @ApiResponse(responseCode = "403", description = "Access denied - admin role required")
+    })
+    public ResponseEntity<MessageResponse> broadcastEmail(@Valid @RequestBody BroadcastEmailRequest request) {
+        int sentCount = adminService.broadcastEmail(request);
+        return ResponseEntity.ok(MessageResponse.of("Email sent to " + sentCount + " users"));
+    }
+
+    @GetMapping("/emails/csv")
+    @Operation(summary = "Export all user emails as CSV",
+            description = "Returns a CSV file with all user emails and basic information.")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "CSV file generated successfully"),
+            @ApiResponse(responseCode = "403", description = "Access denied - admin role required")
+    })
+    public ResponseEntity<byte[]> exportEmailsCsv() {
+        String csv = adminService.exportEmailsCsv();
+        byte[] csvBytes = csv.getBytes();
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType("text/csv"));
+        headers.setContentDispositionFormData("attachment", "users_emails.csv");
+        headers.setContentLength(csvBytes.length);
+
+        return new ResponseEntity<>(csvBytes, headers, HttpStatus.OK);
+    }
+    @PostMapping("/users/{userId}/email")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> sendEmailToUser(
+            @PathVariable Integer userId,
+            @RequestBody BroadcastEmailRequest request) {
+
+        UserEntity user = userService.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        emailService.sendSimpleMessage(
+                user.getEmail(),
+                request.subject(),
+                request.message()
+        );
+
+        return ResponseEntity.ok().build();
     }
 }

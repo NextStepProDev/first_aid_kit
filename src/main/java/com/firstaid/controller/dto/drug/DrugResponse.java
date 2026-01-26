@@ -1,4 +1,4 @@
-package com.firstaid.controller.dto;
+package com.firstaid.controller.dto.drug;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -11,7 +11,7 @@ import java.time.OffsetDateTime;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class DrugDTO {
+public class DrugResponse {
 
     private Integer drugId;
     private String drugName;

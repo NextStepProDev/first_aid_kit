@@ -1,11 +1,6 @@
 package com.firstaid.service;
 
-import com.firstaid.controller.dto.auth.DeleteAccountRequest;
-import com.firstaid.controller.dto.auth.JwtResponse;
-import com.firstaid.controller.dto.auth.LoginRequest;
-import com.firstaid.controller.dto.auth.RefreshTokenRequest;
-import com.firstaid.controller.dto.auth.RegisterRequest;
-import com.firstaid.controller.dto.auth.UserProfileResponse;
+import com.firstaid.controller.dto.auth.*;
 import com.firstaid.domain.exception.AccountLockedException;
 import com.firstaid.domain.exception.InvalidPasswordException;
 import com.firstaid.infrastructure.database.entity.RoleEntity;
@@ -15,11 +10,12 @@ import com.firstaid.infrastructure.database.repository.RoleRepository;
 import com.firstaid.infrastructure.database.repository.UserRepository;
 import com.firstaid.infrastructure.email.EmailService;
 import com.firstaid.infrastructure.security.CurrentUserService;
-import com.firstaid.infrastructure.security.CustomUserDetails;
 import com.firstaid.infrastructure.security.CustomUserDetailService;
+import com.firstaid.infrastructure.security.CustomUserDetails;
 import com.firstaid.infrastructure.security.JwtTokenProvider;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -29,8 +25,6 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import org.springframework.beans.factory.annotation.Value;
 
 import java.time.OffsetDateTime;
 import java.util.HashSet;
@@ -270,6 +264,40 @@ public class AuthService {
                 .roles(roles)
                 .createdAt(user.getCreatedAt())
                 .lastLogin(user.getLastLogin())
+                .build();
+    }
+
+    @Transactional
+    public UserProfileResponse updateProfile(UpdateProfileRequest request) {
+        Integer userId = currentUserService.getCurrentUserId();
+        String currentUsername = currentUserService.getCurrentUsername();
+
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalStateException("User not found"));
+
+        // Check if username is being changed and if the new one already exists
+        if (!currentUsername.equals(request.username()) && userRepository.existsByUserName(request.username())) {
+            throw new IllegalArgumentException("Username already exists");
+        }
+
+        user.setUserName(request.username());
+        user.setName(request.name());
+
+        UserEntity savedUser = userRepository.save(user);
+        log.info("Profile updated for user: {}", savedUser.getEmail());
+
+        Set<String> roles = savedUser.getRole().stream()
+                .map(RoleEntity::getRole)
+                .collect(Collectors.toSet());
+
+        return UserProfileResponse.builder()
+                .userId(savedUser.getUserId())
+                .username(savedUser.getUserName())
+                .email(savedUser.getEmail())
+                .name(savedUser.getName())
+                .roles(roles)
+                .createdAt(savedUser.getCreatedAt())
+                .lastLogin(savedUser.getLastLogin())
                 .build();
     }
 }

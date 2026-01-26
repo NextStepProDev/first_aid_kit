@@ -1,14 +1,14 @@
 package com.firstaid.infrastructure.pdf;
 
-import com.firstaid.controller.dto.DrugDTO;
+import com.firstaid.controller.dto.drug.DrugResponse;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.openpdf.text.*;
 import org.openpdf.text.Font;
 import org.openpdf.text.pdf.PdfPCell;
 import org.openpdf.text.pdf.PdfPTable;
 import org.openpdf.text.pdf.PdfWriter;
 import org.openpdf.text.pdf.draw.LineSeparator;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.awt.*;
@@ -20,7 +20,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class PdfExportService {
 
-    private static PdfPTable getPdfPTable(List<DrugDTO> drugs) {
+    private static PdfPTable getPdfPTable(List<DrugResponse> drugs) {
         PdfPTable table = new PdfPTable(4);
         table.setWidthPercentage(100);
         Font headerFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD);
@@ -30,7 +30,7 @@ public class PdfExportService {
         table.addCell(new PdfPCell(new Phrase("Expiration", headerFont)));
 
         int index = 1;
-        for (DrugDTO drug : drugs) {
+        for (DrugResponse drug : drugs) {
             table.addCell(String.valueOf(index++));
             table.addCell(drug.getDrugName());
             table.addCell(drug.getDrugForm().name());
@@ -38,7 +38,7 @@ public class PdfExportService {
         }
         return table;
     }
-    public byte[] generatePdf(List<DrugDTO> drugs) {
+    public byte[] generatePdf(List<DrugResponse> drugs) {
 
         log.info("Starting PDF generation for drug list");
 

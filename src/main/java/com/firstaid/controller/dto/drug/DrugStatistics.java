@@ -1,4 +1,4 @@
-package com.firstaid.controller.dto;
+package com.firstaid.controller.dto.drug;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -11,7 +11,7 @@ import java.util.Map;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor
-public class DrugStatisticsDTO {
+public class DrugStatistics {
     private long totalDrugs;
     private long expiredDrugs;
     private long activeDrugs;

@@ -6,7 +6,7 @@ plugins {
 }
 
 group = 'com.firstaid'
-version = '0.2.0-SNAPSHOT'
+version = '2.0.0-SNAPSHOT'
 
 java {
     toolchain {
@@ -23,9 +23,6 @@ configurations {
 repositories {
     mavenCentral()
 }
-
-// NOTE: do NOT put gradle properties (versions) in this file.
-// Put them in gradle.properties (project root).
 
 dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'

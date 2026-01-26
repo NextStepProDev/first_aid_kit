@@ -1,9 +1,9 @@
 package com.firstaid.service;
 
-import com.firstaid.controller.dto.DrugDTO;
-import com.firstaid.controller.dto.DrugFormDTO;
-import com.firstaid.controller.dto.DrugRequestDTO;
-import com.firstaid.controller.dto.DrugStatisticsDTO;
+import com.firstaid.controller.dto.drug.DrugCreateRequest;
+import com.firstaid.controller.dto.drug.DrugFormDTO;
+import com.firstaid.controller.dto.drug.DrugResponse;
+import com.firstaid.controller.dto.drug.DrugStatistics;
 import com.firstaid.domain.exception.DrugNotFoundException;
 import com.firstaid.domain.exception.EmailSendingException;
 import com.firstaid.infrastructure.database.entity.DrugEntity;
@@ -26,10 +26,11 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.OffsetDateTime;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import static java.time.OffsetDateTime.now;
 
 @Slf4j
 @Service
@@ -42,26 +43,16 @@ public class DrugService {
     private final EmailService emailService;
     private final CurrentUserService currentUserService;
     private final UserRepository userRepository;
+    private final UserService userService;
 
-    private DrugFormDTO parseForm(String value) {
-        if (value == null) {
-            throw new IllegalArgumentException("Drug form cannot be null");
-        }
-        return Arrays.stream(DrugFormDTO.values())
-                .filter(e -> e.name().equalsIgnoreCase(value))
-                .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("Invalid drug form: " + value + ". Allowed: " +
-                        Arrays.toString(DrugFormDTO.values())));
-    }
 
-    @CacheEvict(value = { "drugById", "drugsSearch", "drugStatistics" }, allEntries = true)
-    public DrugDTO addNewDrug(DrugRequestDTO dto) {
+    @CacheEvict(value = {"drugById", "drugsSearch", "drugStatistics"}, allEntries = true)
+    public DrugResponse addNewDrug(DrugCreateRequest dto) {
         Integer userId = currentUserService.getCurrentUserId();
         log.info("User {} attempting to add a new drug: {}", userId, dto.getName());
 
-        DrugFormEntity form = drugFormService.resolve(parseForm(dto.getForm()));
-        UserEntity owner = userRepository.findByUserId(userId)
-                .orElseThrow(() -> new IllegalStateException("Current user not found"));
+        DrugFormEntity form = drugFormService.resolve(DrugFormDTO.fromString(dto.getForm()));
+        UserEntity owner = userService.getUserOrThrow(userId);
 
         DrugEntity entity = DrugEntity.builder()
                 .drugName(dto.getName())
@@ -78,7 +69,7 @@ public class DrugService {
     }
 
     @Cacheable(value = "drugById", keyGenerator = "userAwareCacheKeyGenerator")
-    public DrugDTO getDrugById(Integer id) {
+    public DrugResponse getDrugById(Integer id) {
         Integer userId = currentUserService.getCurrentUserId();
         log.info("User {} fetching drug with ID: {}", userId, id);
 
@@ -88,7 +79,7 @@ public class DrugService {
         return drugMapper.mapToDTO(entity);
     }
 
-    @CacheEvict(value = { "drugById", "drugsSearch", "drugStatistics" }, allEntries = true)
+    @CacheEvict(value = {"drugById", "drugsSearch", "drugStatistics"}, allEntries = true)
     public void deleteDrug(Integer id) {
         Integer userId = currentUserService.getCurrentUserId();
         log.info("User {} attempting to delete drug with ID: {}", userId, id);
@@ -100,8 +91,8 @@ public class DrugService {
         log.info("User {} successfully deleted drug with ID: {}", userId, id);
     }
 
-    @CacheEvict(value = { "drugById", "drugsSearch", "drugStatistics" }, allEntries = true)
-    public void updateDrug(Integer id, DrugRequestDTO dto) {
+    @CacheEvict(value = {"drugById", "drugsSearch", "drugStatistics"}, allEntries = true)
+    public void updateDrug(Integer id, DrugCreateRequest dto) {
         Integer userId = currentUserService.getCurrentUserId();
         log.info("User {} attempting to update drug with ID: {}", userId, id);
 
@@ -109,7 +100,7 @@ public class DrugService {
                 .orElseThrow(() -> new DrugNotFoundException("Drug not found with ID: " + id));
 
         entity.setDrugName(dto.getName());
-        entity.setDrugForm(drugFormService.resolve(parseForm(dto.getForm())));
+        entity.setDrugForm(drugFormService.resolve(DrugFormDTO.fromString(dto.getForm())));
         entity.setExpirationDate(DateUtils.buildExpirationDate(dto.getExpirationYear(), dto.getExpirationMonth()));
         entity.setDrugDescription(dto.getDescription());
 
@@ -117,8 +108,8 @@ public class DrugService {
         log.info("User {} successfully updated drug with ID: {}", userId, id);
     }
 
-    @CacheEvict(value = { "drugById", "drugsSearch", "drugStatistics" }, allEntries = true)
-    public void sendExpiryAlertEmailsForCurrentUser(int year, int month) {
+    @CacheEvict(value = {"drugById", "drugsSearch", "drugStatistics"}, allEntries = true)
+    public int sendExpiryAlertEmailsForCurrentUser(int year, int month) {
         Integer userId = currentUserService.getCurrentUserId();
         String userEmail = currentUserService.getCurrentUserEmail();
         log.info("User {} sending expiry alert emails for drugs expiring up to {}/{}", userId, year, month);
@@ -127,15 +118,14 @@ public class DrugService {
         List<DrugEntity> expiringDrugs =
                 drugRepository.findByOwnerUserIdAndExpirationDateLessThanEqualAndAlertSentFalse(userId, endInclusive);
 
-        sendAlertsForDrugs(expiringDrugs, userEmail);
+        return sendAlertsForDrugs(expiringDrugs, userEmail);
     }
 
     @CacheEvict(value = { "drugById", "drugsSearch", "drugStatistics" }, allEntries = true)
-    public void sendDefaultExpiryAlertEmailsForCurrentUser() {
+    public int sendDefaultExpiryAlertEmailsForCurrentUser() {
         log.info("Sending default expiry alert emails for current user.");
-        OffsetDateTime now = OffsetDateTime.now();
-        OffsetDateTime oneMonthLater = now.plusMonths(1);
-        sendExpiryAlertEmailsForCurrentUser(oneMonthLater.getYear(), oneMonthLater.getMonthValue());
+        OffsetDateTime now = now();
+        return sendExpiryAlertEmailsForCurrentUser(now.getYear(), now.getMonthValue());
     }
 
     /**
@@ -144,14 +134,14 @@ public class DrugService {
      * This method is NOT user-scoped - it processes all users.
      */
     @Scheduled(cron = "0 0 9 * * *")
-    @CacheEvict(value = { "drugById", "drugsSearch", "drugStatistics" }, allEntries = true)
+    @CacheEvict(value = {"drugById", "drugsSearch", "drugStatistics"}, allEntries = true)
     public void sendScheduledExpiryAlerts() {
         log.info("Scheduler: Running daily expiry alert task at 9:00 AM");
-        OffsetDateTime oneMonthLater = OffsetDateTime.now().plusMonths(1);
-        sendExpiryAlertEmailsForAllUsers(oneMonthLater.getYear(), oneMonthLater.getMonthValue());
+        OffsetDateTime now = now();
+        sendExpiryAlertEmailsForAllUsers(now.getYear(), now.getMonthValue());
     }
 
-    @CacheEvict(value = { "drugById", "drugsSearch", "drugStatistics" }, allEntries = true)
+    @CacheEvict(value = {"drugById", "drugsSearch", "drugStatistics"}, allEntries = true)
     public void sendExpiryAlertEmailsForAllUsers(int year, int month) {
         log.info("Scheduler: Sending expiry alert emails for all users for drugs expiring up to {}/{}", year, month);
 
@@ -174,25 +164,23 @@ public class DrugService {
         }
     }
 
-    private void sendAlertsForDrugs(List<DrugEntity> drugs, String recipientEmail) {
+    private int sendAlertsForDrugs(List<DrugEntity> drugs, String recipientEmail) {
         log.info("Found {} drugs to send alerts for to {}", drugs.size(), recipientEmail);
 
         if (recipientEmail == null || recipientEmail.isBlank()) {
             log.warn("No recipient email provided. Skipping email sending.");
-            return;
+            return 0;
         }
 
-        // Filter only drugs that haven't been alerted yet
         List<DrugEntity> drugsToAlert = drugs.stream()
                 .filter(drug -> !drug.isAlertSent())
                 .toList();
 
         if (drugsToAlert.isEmpty()) {
             log.info("All drugs already notified. Skipping email sending.");
-            return;
+            return 0;
         }
 
-        // Build consolidated email with all drugs
         String subject = "Drug Expiry Alert - " + drugsToAlert.size() + " drug(s) expiring soon";
         StringBuilder messageBuilder = new StringBuilder();
         messageBuilder.append("Attention!\n\n");
@@ -216,13 +204,11 @@ public class DrugService {
             emailService.sendEmail(recipientEmail, subject, messageBuilder.toString());
             log.info("Consolidated alert sent for {} drugs to {}", drugsToAlert.size(), recipientEmail);
 
-            // Mark all drugs as alerted
             for (DrugEntity drug : drugsToAlert) {
                 drug.setAlertSent(true);
                 drugRepository.save(drug);
-                log.debug("Drug marked as notified: {}", drug.getDrugName());
             }
-            log.info("All {} drugs marked as notified", drugsToAlert.size());
+            return drugsToAlert.size();
         } catch (Exception e) {
             log.error("Failed to send consolidated alert email to {}", recipientEmail, e);
             throw new EmailSendingException("Could not send consolidated email alert", e);
@@ -230,12 +216,12 @@ public class DrugService {
     }
 
     @Cacheable(value = "drugStatistics", keyGenerator = "userAwareCacheKeyGenerator")
-    public DrugStatisticsDTO getDrugStatistics() {
+    public DrugStatistics getDrugStatistics() {
         Integer userId = currentUserService.getCurrentUserId();
         log.info("User {} fetching drug statistics.", userId);
 
         long total = drugRepository.countByOwnerUserId(userId);
-        long expired = drugRepository.countByOwnerUserIdAndExpirationDateBefore(userId, OffsetDateTime.now());
+        long expired = drugRepository.countByOwnerUserIdAndExpirationDateBefore(userId, now());
         long alertsSent = drugRepository.countByOwnerUserIdAndAlertSentTrue(userId);
         List<Object[]> rawStats = drugRepository.countGroupedByFormAndUserId(userId);
         Map<String, Long> stats = mapGroupedByForm(rawStats);
@@ -244,7 +230,7 @@ public class DrugService {
         log.info("User {} statistics fetched: Total Drugs: {}, Expired Drugs: {}, Active Drugs: {}, Alerts Sent: {}",
                 userId, total, expired, activeDrugs, alertsSent);
 
-        return DrugStatisticsDTO.builder()
+        return DrugStatistics.builder()
                 .totalDrugs(total)
                 .expiredDrugs(expired)
                 .activeDrugs(activeDrugs)
@@ -263,12 +249,12 @@ public class DrugService {
     }
 
     @Cacheable(
-        value = "drugsSearch",
-        keyGenerator = "userAwareCacheKeyGenerator",
-        condition = "(#name != null && #name.trim().length() > 0) || (#form != null && #form.trim().length() > 0) || (#expired != null) || (#expirationUntilYear != null) || (#expirationUntilMonth != null)",
-        unless = "#result == null || #result.isEmpty()"
+            value = "drugsSearch",
+            keyGenerator = "userAwareCacheKeyGenerator",
+            condition = "(#name != null && #name.trim().length() > 0) || (#form != null && #form.trim().length() > 0) || (#expired != null) || (#expirationUntilYear != null) || (#expirationUntilMonth != null)",
+            unless = "#result == null || #result.isEmpty()"
     )
-    public Page<DrugDTO> searchDrugs(
+    public Page<DrugResponse> searchDrugs(
             String name,
             String form,
             Boolean expired,
@@ -282,7 +268,7 @@ public class DrugService {
 
         name = (name != null && !name.isBlank()) ? name.trim() : "";
 
-        OffsetDateTime now = OffsetDateTime.now();
+        OffsetDateTime now = now();
         // If only year is provided, assume December (end of year)
         if (expirationUntilYear != null && expirationUntilMonth == null) {
             expirationUntilMonth = 12;
@@ -300,7 +286,7 @@ public class DrugService {
 
         DrugFormEntity formEntity = null;
         if (form != null && !form.isBlank()) {
-            DrugFormDTO formEnum = parseForm(form);
+            DrugFormDTO formEnum = DrugFormDTO.fromString(form);
             formEntity = drugFormService.resolve(formEnum);
         }
         String nameLower = name.toLowerCase();
@@ -310,7 +296,13 @@ public class DrugService {
                 cb.equal(root.get("owner").get("userId"), userId);
 
         if (!nameLower.isBlank()) {
-            spec = spec.and((root, query, cb) -> cb.like(cb.lower(root.get("drugName")), "%" + nameLower + "%"));
+            spec = spec.and((root, query, cb) -> {
+                String pattern = "%" + nameLower + "%";
+                return cb.or(
+                        cb.like(cb.lower(root.get("drugName")), pattern),
+                        cb.like(cb.lower(root.get("drugDescription")), pattern)
+                );
+            });
         }
         if (formEntity != null) {
             DrugFormEntity finalFormEntity = formEntity;

@@ -1,6 +1,6 @@
 package com.firstaid.service;
 
-import com.firstaid.controller.dto.DrugFormDTO;
+import com.firstaid.controller.dto.drug.DrugFormDTO;
 import com.firstaid.infrastructure.database.entity.DrugFormEntity;
 import com.firstaid.infrastructure.database.repository.DrugFormRepository;
 import lombok.RequiredArgsConstructor;

@@ -1,15 +1,6 @@
 package com.firstaid.controller.auth;
 
-import com.firstaid.controller.dto.auth.ChangePasswordRequest;
-import com.firstaid.controller.dto.auth.DeleteAccountRequest;
-import com.firstaid.controller.dto.auth.ForgotPasswordRequest;
-import com.firstaid.controller.dto.auth.JwtResponse;
-import com.firstaid.controller.dto.auth.LoginRequest;
-import com.firstaid.controller.dto.auth.MessageResponse;
-import com.firstaid.controller.dto.auth.RefreshTokenRequest;
-import com.firstaid.controller.dto.auth.RegisterRequest;
-import com.firstaid.controller.dto.auth.ResetPasswordRequest;
-import com.firstaid.controller.dto.auth.UserProfileResponse;
+import com.firstaid.controller.dto.auth.*;
 import com.firstaid.service.AuthService;
 import com.firstaid.service.PasswordResetService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -21,15 +12,10 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -39,6 +25,8 @@ public class AuthController {
 
     private final AuthService authService;
     private final PasswordResetService passwordResetService;
+    @Value("${app.frontend.url}")
+    private String frontendUrl;
 
     @PostMapping("/register")
     @Operation(summary = "Register a new user", description = "Creates a new user account and returns JWT tokens")
@@ -89,15 +77,17 @@ public class AuthController {
     }
 
     @PostMapping("/forgot-password")
-    @Operation(summary = "Request password reset", description = "Sends a password reset email to the specified address if the account exists")
+    @Operation(summary = "Request password reset", description = "Sends a password reset email to the React frontend address")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "If the email exists, a reset link has been sent",
                     content = @Content(schema = @Schema(implementation = MessageResponse.class))),
             @ApiResponse(responseCode = "400", description = "Invalid email format")
     })
     public ResponseEntity<MessageResponse> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
-        String baseUrl = ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString();
-        passwordResetService.initiatePasswordReset(request, baseUrl);
+        // Zamiast ServletUriComponentsBuilder, używamy adresu z konfiguracji
+        // frontendUrl to teraz http://localhost:3000
+        passwordResetService.initiatePasswordReset(request, frontendUrl);
+
         return ResponseEntity.ok(MessageResponse.of("If the email exists, a password reset link has been sent"));
     }
 
@@ -137,6 +127,20 @@ public class AuthController {
     })
     public ResponseEntity<UserProfileResponse> getCurrentUser() {
         UserProfileResponse profile = authService.getCurrentUserProfile();
+        return ResponseEntity.ok(profile);
+    }
+
+    @PutMapping("/profile")
+    @Operation(summary = "Update user profile", description = "Updates the name and username for the authenticated user. Email cannot be changed.")
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Profile updated successfully",
+                    content = @Content(schema = @Schema(implementation = UserProfileResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid input or username already exists"),
+            @ApiResponse(responseCode = "401", description = "Not authenticated")
+    })
+    public ResponseEntity<UserProfileResponse> updateProfile(@Valid @RequestBody UpdateProfileRequest request) {
+        UserProfileResponse profile = authService.updateProfile(request);
         return ResponseEntity.ok(profile);
     }
 }

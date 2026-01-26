@@ -4,7 +4,6 @@ import io.github.resilience4j.retry.annotation.Retry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.env.Environment;
-import org.springframework.mail.MailException;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.scheduling.annotation.Async;
@@ -43,8 +42,16 @@ public class EmailService {
         log.info("Email successfully sent to: {}", to);
     }
 
-    @SuppressWarnings("unused")
     private void sendEmailFallback(String to, String subject, String body, Exception e) {
         log.error("Failed to send email to {} after retries. Subject: {}. Error: {}", to, subject, e.getMessage());
+    }
+
+    public void sendSimpleMessage(String to, String subject, String text) {
+        SimpleMailMessage message = new SimpleMailMessage();
+        message.setFrom("firstaidkit.team@gmail.com");
+        message.setTo(to);
+        message.setSubject(subject);
+        message.setText(text);
+        mailSender.send(message);
     }
 }

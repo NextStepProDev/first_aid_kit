@@ -9,187 +9,109 @@
 </pre>
 
 
-![Java](https://img.shields.io/badge/Java-21-blue)
-![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.5-green)
+![Java](https://img.shields.io/badge/Java-25-blue)
+![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.0.1-green)
+![JSpecify](https://img.shields.io/badge/Null--Safety-JSpecify-orange)
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 
 # First Aid Kit Application
 
-A lightweight Java-based application for managing a database of drugs. It supports creating, updating, deleting, and 
-querying drug records, along with automated email alerts for medications nearing expiration. An optional PDF export 
+A lightweight Java-based application for managing a database of drugs. It supports creating, updating, deleting, and
+querying drug records, along with automated email alerts for medications nearing expiration. An optional PDF export
 feature is also available for listing current drugs.
 
-## Key Features
+## 🌟 Key Features
 
-- **CRUD Operations**: 
-  - Add new drugs to the system.
-  - Update existing drug details.
-  - Delete drugs from the database.
-  - Retrieve drug details by various filters (e.g., by expiration date).
-  
+- **CRUD Operations**:
+    - Add new drugs to the system.
+    - Update existing drug details.
+    - Delete drugs from the database.
+    - Retrieve drug details with advanced filtering (e.g., by name, form, or expiration date).
+
 - **Drug Expiration Alerts**:
-  - Automatically send email alerts for drugs that are close to their expiration date (1 month before).
-  
-- **Statistics**:
-  - Get statistics on the total number of drugs, expired drugs, active drugs, and alerts sent.
+    - Automatically sends email alerts for drugs approaching their expiration date (1 month prior).
 
-- **Multi-Tenancy**:
-  - Each user has their own isolated drug collection.
-  - Users can only view and manage their own medications.
-  - Data is automatically filtered by the authenticated user.
+- **Statistics**:
+    - Comprehensive dashboard data: total drug count, expired vs. active medications, and history of sent alerts.
+
+- **Multi-Tenancy & Data Isolation**:
+    - Each user manages a strictly isolated drug collection.
+    - Automatic data filtering based on the authenticated user's identity.
+    - Enhanced security with **User-Aware Caching** to prevent cross-user data leakage.
 
 - **Authentication & Security**:
-  - JWT-based authentication (access + refresh tokens).
-  - User registration and login via **email + password**.
-  - Role-based access control (USER, ADMIN).
-  - Welcome email sent upon successful registration.
+    - Secure **JWT-based** authentication (Access + Refresh tokens).
+    - Registration and login via email & password.
+    - Role-based access control (USER, ADMIN).
+    - Automated welcome emails upon successful registration.
+    - Strict **Null-Safety** implementation using **JSpecify** across core infrastructure.
 
 - **Account Management**:
-  - Delete account permanently.
-  - Password recovery via email (forgot password).
-  - Password change for authenticated users.
+    - Permanent account deletion with all associated data.
+    - Secure password recovery (Forgot Password) via email tokens.
+    - In-app password change for authenticated users.
 
 ## 📦 API Endpoints
 
-Full documentation available via [Swagger UI](http://localhost:8081/swagger-ui/index.html).
+Full documentation is available via **Swagger UI**. The access URL depends on your environment:
 
-### 🔹 CRUD Operations
-- **`GET /api/drugs/search`**  
-  _Returns a list of all drugs in the database._
+- **Docker**: [http://localhost:8081/swagger-ui/index.html](http://localhost:8081/swagger-ui/index.html)
+- **Local (IDE)**: [http://localhost:8082/swagger-ui/index.html](http://localhost:8082/swagger-ui/index.html)
 
-- **`GET /api/drugs/{id}`**  
-  _Returns a drug by its ID._
+### 🔹 Drug Management (CRUD)
 
-- **`POST /api/drugs`**  
-  _Adds a new drug to the database._
-
-- **`PUT /api/drugs/{id}`**  
-  _Updates an existing drug by its ID._
-
-- **`DELETE /api/drugs/{id}`**
-  _Deletes a drug by its ID._
+- **`GET /api/drugs/search`** — Unified search endpoint with filtering, sorting, and pagination.
+- **`GET /api/drugs/{id}`** — Returns a specific drug by ID (`DrugResponse`).
+- **`POST /api/drugs`** — Adds a new drug (`DrugRequest`).
+- **`PUT /api/drugs/{id}`** — Updates an existing drug by its ID.
+- **`DELETE /api/drugs/{id}`** — Removes a drug from the database.
 
 ---
 
 ### 🔐 Authentication
 
-- **`POST /api/auth/register`**
-  _Registers a new user account._
-  ```json
-  {
-    "username": "john_doe",
-    "email": "john@example.com",
-    "password": "securePassword123",
-    "name": "John Doe"
-  }
-  ```
+- **`POST /api/auth/register`** — Registers a new user account.
+- **`POST /api/auth/login`** — Authenticates user and returns JWT Access & Refresh tokens.
+- **`POST /api/auth/refresh`** — Refreshes the access token using a valid refresh token.
 
-- **`POST /api/auth/login`**
-  _Authenticates user with email and password. Returns JWT tokens._
-  ```json
-  {
-    "email": "john@example.com",
-    "password": "securePassword123"
-  }
-  ```
-  _Response:_
-  ```json
-  {
-    "accessToken": "eyJhbGciOiJIUzI1NiIs...",
-    "refreshToken": "eyJhbGciOiJIUzI1NiIs...",
-    "userId": 1,
-    "username": "john_doe",
-    "email": "john@example.com"
-  }
-  ```
-
-- **`POST /api/auth/refresh`**
-  _Refreshes the access token using a valid refresh token._
-  ```json
-  {
-    "refreshToken": "eyJhbGciOiJIUzI1NiIs..."
-  }
-  ```
-
-> **Note:** Protected endpoints require `Authorization: Bearer <accessToken>` header.
+> **Note:** Protected endpoints require an `Authorization: Bearer <accessToken>` header.
 
 ---
 
 ### 👤 Account Management
 
-- **`DELETE /api/auth/account`**
-  _Permanently deletes the authenticated user's account and all associated data._
-
-- **`POST /api/auth/forgot-password`**
-  _Initiates password recovery via email._
-  ```json
-  {
-    "email": "john@example.com"
-  }
-  ```
-
-- **`POST /api/auth/reset-password`**
-  _Resets the password using a valid reset token._
-  ```json
-  {
-    "token": "reset-token-from-email",
-    "newPassword": "newSecurePassword123",
-    "confirmPassword": "newSecurePassword123"
-  }
-  ```
-
-- **`GET /api/auth/validate-reset-token?token=...`**
-  _Validates if a password reset token is still valid._
-
-- **`POST /api/auth/change-password`** _(requires authentication)_
-  _Changes the password for the authenticated user._
-  ```json
-  {
-    "currentPassword": "oldPassword123",
-    "newPassword": "newSecurePassword123",
-    "confirmPassword": "newSecurePassword123"
-  }
-  ```
+- **`DELETE /api/auth/account`** — Permanently deletes the authenticated user's account and all associated data.
+- **`POST /api/auth/forgot-password`** — Initiates password recovery via email.
+- **`POST /api/auth/reset-password`** — Resets the password using a valid reset token.
+- **`GET /api/auth/validate-reset-token?token=...`** — Validates if a password reset token is still valid.
+- **`POST /api/auth/change-password`** — Changes the password for the authenticated user (requires auth).
 
 ---
 
 ### 🔎 Filtering & Search
-- **`GET /api/drugs/search`**  
-  _Unified search endpoint with filtering, sorting, and pagination._
-  **Query params:**
-  - `name` — substring match (case-insensitive)
-  - `form` — enum value (e.g., `PILL`, `GEL`, `SYRUP`, ...)
-  - `expired` — `true|false`
-  - `expirationUntilYear` — e.g., `2025`
-  - `expirationUntilMonth` — `1..12`
-  - `page` — default `0`
-  - `size` — default `20`, **max `100`**
-  - `sort` — e.g., `drugName,asc` or `expirationDate,desc`
 
-_Examples:_
-- `/api/drugs/search?name=ibu&form=GEL`
+**`GET /api/drugs/search`**
+**Query parameters:**
+
+- `name` — substring match (case-insensitive).
+- `form` — enum value (e.g., `PILL`, `GEL`). Now **case-insensitive** at the API level.
+- `expired` — `true|false`.
+- `expirationUntilYear` / `expirationUntilMonth` — e.g., `2026` / `10`.
+- `page` / `size` / `sort` — standard pagination and sorting (e.g., `drugName,asc`).
+
+**Examples:**
+
+- `/api/drugs/search?name=ibu&form=gel`
 - `/api/drugs/search?expired=true&sort=expirationDate,asc&size=100`
-- `/api/drugs/search?expirationUntilYear=2025&expirationUntilMonth=10`
 
 ---
 
-### 📚 Supplementary
-- **`GET /api/drugs/forms`**  
-  _Returns available drug form enum values._
+### 📚 Supplementary & Tools
 
-- **`GET /api/drugs/forms/dictionary`**  
-  _Returns a dictionary of drug forms and their labels._
-
-- **`GET /api/drugs/statistics`**  
-  _Returns statistics (total, expired, active, alerts sent, etc.)._
-
-- **`GET /api/drugs/export/pdf`**  
-  _Exports the current drug list to PDF. Supports optional `size` (default `20`, max `100`)._
-
-- **`GET /api/drugs/alert`**  
-  _Sends expiry alert emails for drugs expiring in the current month._
-
----
+- **`GET /api/drugs/forms/dictionary`** — Returns a dictionary of drug forms and their human-readable labels.
+- **`GET /api/drugs/statistics`** — Returns data on total, expired, and active medications.
+- **`GET /api/drugs/export/pdf`** — Exports the current drug list to PDF (max size: 100).
+- **`GET /api/drugs/alert`** — Manually triggers expiry alert emails for drugs expiring this month.
 
 ### 💾 Performance & Caching
 
@@ -220,38 +142,40 @@ There are two ways to run the application: locally via IntelliJ/Gradle or using 
    cd first_aid_kit
    ```
 
-2. Make sure you have PostgreSQL running (either locally or via Docker) and that the credentials match the configuration.
+2. Make sure you have PostgreSQL running (either locally or via Docker) and that the credentials match the
+   configuration.
 
-   If running the application locally (outside Docker), you must define the required environment variables manually in your system or via IntelliJ:
+   If running the application locally (outside Docker), you must define the required environment variables manually in
+   your system or via IntelliJ:
 
     - `POSTGRES_USER`
     - `POSTGRES_PASSWORD`
     - `POSTGRES_DB`
     - `MAIL_USERNAME`
     - `MAIL_PASSWORD`
+    - `JWT_SECRET`
 
    You can also find example values in the `.env.example` file.
 
-   **Alternative: Use `local` profile (recommended for IntelliJ)**
+   **Alternative: Use `dev` profile (recommended for IntelliJ)**
 
-   The `local` profile (`application-local.yml`) has hardcoded database and mail credentials, so you don't need to set environment variables manually.
+   The `dev` profile (`application-dev.yml`) uses `spring.config.import` to automatically load database and mail
+   credentials from your local `.env` file, so you don't need to set environment variables manually.
 
    In IntelliJ:
-   - Go to **Run → Edit Configurations**
-   - Set **Active profiles:** `local`
-   - Or add VM option: `-Dspring.profiles.active=local`
+    - Go to **Run → Edit Configurations**
+    - Set **Active profiles:** `dev`
+    - Or add VM option: `-Dspring.profiles.active=dev`
 
 3. Run the application:
    ```bash
    # With dev profile (requires env variables)
    ./gradlew bootRun --args='--spring.profiles.active=dev'
 
-   # With local profile (no env variables needed)
-   ./gradlew bootRun --args='--spring.profiles.active=local'
    ```
 
 4. Access Swagger UI:
-   [http://localhost:8081/swagger-ui/index.html](http://localhost:8081/swagger-ui/index.html)
+   [http://localhost:8082/swagger-ui/index.html](http://localhost:8082/swagger-ui/index.html)
 
 ---
 
@@ -286,6 +210,12 @@ PGADMIN_PORT=5050                           # Local port to access pgAdmin UI
 # =======================
 MAIL_USERNAME=youremail@gmail.com           # Your Gmail address
 MAIL_PASSWORD=your_app_password             # App password or SMTP password
+
+# =======================
+# JWT Secret Configuration
+# =======================
+# JWT Secret (min 256 bits / 32 characters)
+JWT_SECRET=DockerSecretKeyForJWTTokenExampleMustBeAtLeast256BitsLong
 ```
 
 > 🔒 **Do not commit the `.env` file to version control** — it's excluded via `.gitignore`.
@@ -309,11 +239,13 @@ docker-compose build --no-cache
 # Start containers
 docker-compose up
 ```
+
 > 📌 Make sure Docker is running before using this method.
 
 ### 3. Access the application:
-   - Swagger UI: [http://localhost:8081/swagger-ui/index.html](http://localhost:8081/swagger-ui/index.html)
-   - pgAdmin: [http://localhost:5050](http://localhost:5050) (or the value of `PGADMIN_PORT` from `.env`)
+
+- Swagger UI: [http://localhost:8081/swagger-ui/index.html](http://localhost:8081/swagger-ui/index.html)
+- pgAdmin: [http://localhost:5050](http://localhost:5050) (or the value of `PGADMIN_PORT` from `.env`)
 
 ### 4. Persistent database data
 
@@ -332,6 +264,7 @@ To view or manage volumes:
 docker volume ls
 docker volume inspect first_aid_kit_postgres_data
 ```
+
 ## 🔐 Security & Best Practices
 
 - Never commit `.env` – it's ignored by `.gitignore`
@@ -339,7 +272,6 @@ docker volume inspect first_aid_kit_postgres_data
 - Environment variables are injected into the application via `docker-compose.yml`
 - Mail credentials should use application-specific passwords (not your Gmail login)
 - Use strong passwords for database and email accounts
-
 
 ## 📚 API Documentation
 
@@ -359,48 +291,33 @@ Swagger UI: [http://localhost:8081/swagger-ui/index.html](http://localhost:8081/
 - OpenAPI / Swagger
 - Testcontainers (PostgreSQL integration tests)
 
-## Project Structure
+## 📦 Project Structure
 
-- `controller/` – REST endpoints
-- `service/` – business logic
-- `repository/` – data access
-- `dto/` – data transfer objects
-- `mapper/` – MapStruct mappers
-- `configuration/` – Spring & cache configuration
-- `bootstrap/` – initial sample data loading
-- `integration/` – integration tests (Testcontainers)
+The project follows a modular and domain-driven architecture to ensure clear separation of concerns:
+
+- **`controller/`** – REST endpoints organized by feature domains:
+    - `admin/`, `alert/`, `auth/`, `drug/`.
+- **`dto/`** – Data Transfer Objects (Requests/Responses) strictly categorized:
+    - `admin/`, `auth/`, `drug/`, `error/`.
+- **`domain/`** – Core business entities and domain-specific exceptions (e.g., `exception/`).
+- **`infrastructure/`** – Technical cross-cutting concerns:
+    - `bootstrap/` – Initial sample data loading.
+    - `cache/` – User-aware caching key generation.
+    - `configuration/` – Global Spring Boot & library settings.
+    - `database/`, `email/`, `pdf/`, `security/`, `validation/`, `util/`.
+- **`service/`** – Business logic orchestration and service layer.
+- **`integration/`** – Integration tests leveraging Testcontainers.
 
 ## ✅ Tests
 
-This project includes **unit**, **slice (web)**, **integration**, and **E2E** tests using JUnit 5, Spring Test, and Testcontainers.
+This project includes **unit**, **slice (web)**, **integration**, and **E2E** tests using JUnit 5, Spring Test, and
+Testcontainers.
 
 Run all tests:
 
 ```bash
 ./gradlew test
 ```
-
-### Test suites
-
-- **Integration** (`src/test/java/.../integration`)
-  - `base/AbstractIntegrationTest` — shared Testcontainers/JPA context for integration tests.
-  - `web/GlobalExceptionIntegrationTest` — global exception handling & error responses.
-  - `e2e/base/DrugCreateE2ETest` — end-to-end flows for creating drugs and triggering email alerts.
-  - `e2e/base/SmokeApiTest` — high-level API smoke coverage.
-
-- **Slice / Controller** (`src/test/java/.../slice/controller`)
-  - `DrugControllerValidationSliceTest` — controller validation & request mapping (no DB).
-
-- **Unit / Service** (`src/test/java/.../unit/service`)
-  - `DrugServiceTest` — pure unit tests of business logic.
-
-### Covered areas
-- Request validation (DTO fields & method parameters)
-- Error handling (`@ControllerAdvice`) and HTTP status codes
-- Search endpoint: filters, pagination, sorting
-- PDF export constraints (size limits)
-- Email alert logic (including failure path)
-- CRUD: create / update / delete / get
 
 ## Example API Usage
 
@@ -447,7 +364,10 @@ _Response example (paginated):_
       "drugDescription": "Used to treat pain and fever"
     }
   ],
-  "pageable": { "pageNumber": 0, "pageSize": 100 },
+  "pageable": {
+    "pageNumber": 0,
+    "pageSize": 100
+  },
   "totalElements": 2,
   "totalPages": 1
 }
@@ -459,13 +379,11 @@ _Response example (paginated):_
 GET /api/drugs/search?name=ibu&form=GEL
 ```
 
-
 ## 📦 Versioning
 
 This project uses [semantic versioning](https://semver.org/) — format: `MAJOR.MINOR.PATCH`.
 
-- Current version: **`0.2.0-SNAPSHOT`**
-- Latest stable release: [**`v0.2.0`**](https://github.com/NextStepProDev/first_aid_kit/releases/tag/v0.1.0)
+- Current version: **`2.0.0-SNAPSHOT`**
 
 You can browse release history [here](https://github.com/NextStepProDev/first_aid_kit/releases).
 
@@ -473,4 +391,5 @@ You can browse release history [here](https://github.com/NextStepProDev/first_ai
 
 This project is licensed under the MIT License – see the [LICENSE](LICENSE) file for details.
 
-Made with ❤️ during my journey to become a professional Java Developer – [Mateusz Nawratek](https://www.linkedin.com/in/mateusz-nawratek-909752356)
+Made with ❤️ during my journey to become a professional Java
+Developer – [Mateusz Nawratek](https://www.linkedin.com/in/mateusz-nawratek-909752356)

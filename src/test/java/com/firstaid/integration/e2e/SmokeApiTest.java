@@ -1,6 +1,6 @@
 package com.firstaid.integration.e2e;
 
-import com.firstaid.controller.dto.DrugFormDTO;
+import com.firstaid.controller.dto.drug.DrugFormDTO;
 import com.firstaid.infrastructure.database.entity.DrugEntity;
 import com.firstaid.infrastructure.database.entity.DrugFormEntity;
 import com.firstaid.infrastructure.database.repository.DrugFormRepository;
@@ -8,7 +8,10 @@ import com.firstaid.infrastructure.pdf.PdfExportService;
 import com.firstaid.infrastructure.util.DateUtils;
 import com.firstaid.integration.base.AbstractIntegrationTest;
 import com.firstaid.service.DrugFormService;
-import org.junit.jupiter.api.*;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
+import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.MediaType;
@@ -31,8 +34,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc(addFilters = false)
 class SmokeApiTest extends AbstractIntegrationTest {
 
-    // Test Constants
-    private static final int INVALID_PAGE_SIZE = 101;
+    private static final int INVALID_PAGE_SIZE = 1001;
     private static final int TEST_PAGE_SIZE = 5;
     private static final int DEFAULT_PAGE_SIZE = 10;
     private static final String FORM_PILLS = "PILLS";
@@ -225,7 +227,7 @@ class SmokeApiTest extends AbstractIntegrationTest {
         }
 
         @Test
-        @DisplayName("GET /api/drugs/export/pdf -> 400 when size > 100")
+        @DisplayName("GET /api/drugs/export/pdf -> 400 when size > 1000")
         void exportPdf_shouldReject_whenSizeOver100() throws Exception {
             mvc.perform(get("/api/drugs/export/pdf")
                             .param("size", String.valueOf(INVALID_PAGE_SIZE)))

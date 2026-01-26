@@ -8,6 +8,7 @@ import java.time.OffsetDateTime;
 @Component
 public class ExpirationDateMapperHelper {
 
+    // using in DrugMapper
     @Named("mapExpirationDateToYearMonth")
     public String mapExpirationDateToYearMonth(OffsetDateTime expirationDate) {
         return expirationDate.getYear() + "-" + String.format("%02d", expirationDate.getMonthValue());

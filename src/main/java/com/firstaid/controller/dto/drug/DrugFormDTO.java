@@ -1,4 +1,4 @@
-package com.firstaid.controller.dto;
+package com.firstaid.controller.dto.drug;
 
 import lombok.Getter;
 
@@ -31,10 +31,15 @@ public enum DrugFormDTO {
     }
 
     public static DrugFormDTO fromString(String value) {
+        if (value == null) {
+            throw new IllegalArgumentException("Drug form cannot be null");
+        }
+
         return Arrays.stream(values())
                 .filter(f -> f.name().equalsIgnoreCase(value))
                 .findFirst()
-                .orElseThrow(() ->
-                        new IllegalArgumentException("Invalid drug form: " + value));
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Invalid drug form: " + value + ". Allowed: " + Arrays.toString(values())
+                ));
     }
 }
