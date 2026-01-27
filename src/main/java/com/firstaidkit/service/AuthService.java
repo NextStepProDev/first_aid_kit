@@ -229,9 +229,9 @@ public class AuthService {
         return """
             Hello %s,
 
-            Welcome to First Aid Kit! Your account has been created successfully.
+            Welcome to First Aid Kit Manager! Your account has been created successfully.
 
-            With First Aid Kit, you can:
+            With First Aid Kit Manager, you can:
             • Track your medications and their expiry dates
             • Get alerts before your medicines expire
             • Manage your personal first aid supplies
