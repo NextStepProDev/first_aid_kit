@@ -14,8 +14,6 @@ spring:
 server:
   port: 8081
 
-# Konfiguracja Swaggera dla poprawnego działania interfejsu Swagger UI w środowisku zewnętrznym (np. przez ngrok)
-# Ustawienia umożliwiają załadowanie dokumentacji i działanie przycisku "Try it out"
 springdoc:
   swagger-ui:
     use-root-path: true
