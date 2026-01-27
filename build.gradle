@@ -5,8 +5,8 @@ plugins {
     id 'jacoco'
 }
 
-group = 'com.firstaid'
-version = '2.0.0-SNAPSHOT'
+group = 'com.firstaidkit'
+version = '2.1.0-SNAPSHOT'
 
 java {
     toolchain {
@@ -90,11 +90,9 @@ tasks.named('test') {
 test {
     useJUnitPlatform()
 
-    // nie rozwiązujemy classpath w konfiguracji — dopiero przy uruchomieniu testu
     doFirst {
         def agentFile = configurations.testRuntimeClasspath.files.find { it.name.contains('byte-buddy-agent') }
         if (agentFile) {
-            // dodajemy javaagent dopiero na etapie wykonania zadania
             jvmArgs = (jvmArgs ?: []) + ["-javaagent:${agentFile.absolutePath}"]
         }
     }

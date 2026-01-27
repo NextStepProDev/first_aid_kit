@@ -383,7 +383,7 @@ GET /api/drugs/search?name=ibu&form=GEL
 
 This project uses [semantic versioning](https://semver.org/) — format: `MAJOR.MINOR.PATCH`.
 
-- Current version: **`2.0.0-SNAPSHOT`**
+- Current version: **`2.1.0-SNAPSHOT`**
 
 You can browse release history [here](https://github.com/NextStepProDev/first_aid_kit/releases).
 

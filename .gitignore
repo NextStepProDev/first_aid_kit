@@ -17,6 +17,8 @@ out/
 !**/src/main/**/out/
 !**/src/test/**/out/
 .env
+CLAUDE.md
+.claude/
 
 ### Local config with secrets ###
 **/application-local.yml
