@@ -38,5 +38,4 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/nextstepprodev/first-aid-kit-api:latest
             ghcr.io/nextstepprodev/first-aid-kit-api:master
