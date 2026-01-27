@@ -2,14 +2,14 @@ name: Build and Push Backend Image
 
 on:
   push:
-    branches: [ "master" ] # Skrypt odpali się przy każdym pushu na main
+    branches: [ "master" ]
 
 jobs:
   build-and-push:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write # Pozwala robotowi wysłać obraz do Twojego profilu
+      packages: write
 
     steps:
       - name: Checkout code
@@ -22,8 +22,8 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Build and Test with Maven
-        run: mvn clean verify # Tu odpala Testcontainers!
+      - name: Build and Test with Gradle
+        run: mvn clean verify
 
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
