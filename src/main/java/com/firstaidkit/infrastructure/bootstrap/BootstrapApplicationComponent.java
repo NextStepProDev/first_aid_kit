@@ -27,7 +27,7 @@ import java.util.Set;
 
 @Slf4j
 @Component
-@Profile({"!test", "dev"})
+@Profile("dev")
 @RequiredArgsConstructor
 @jakarta.annotation.Generated("bootstrap")
 public class BootstrapApplicationComponent implements SmartApplicationListener {
