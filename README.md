@@ -132,6 +132,18 @@ Before running this application, ensure you have the following installed:
 
 ## 🚀 Setup & Run the Application
 
+> **Recommended:** To run the full stack (Backend + Frontend + Database) with a single command,
+> use the [First Aid Kit Hub](https://github.com/NextStepProDev/first-aid-kit-manager-hub) repository.
+> The instructions below are for running the API standalone.
+
+### Port Reference
+
+| Environment | Port | Profile | Use Case |
+|-------------|------|---------|----------|
+| Local (IDE) | 8082 | `dev` | Development in IntelliJ/VS Code |
+| Docker (standalone) | 8081 | `docker` | docker-compose from this repo |
+| Hub (full stack) | 8080 | `docker` | Deployment via Hub repository |
+
 There are two ways to run the application: locally via IntelliJ/Gradle or using Docker.
 
 ### ✅ Option 1: Run Locally (IntelliJ or Terminal)
