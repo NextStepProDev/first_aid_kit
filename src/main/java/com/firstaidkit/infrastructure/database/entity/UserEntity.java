@@ -25,7 +25,7 @@ public class UserEntity {
     private Integer userId;
 
     @Column(name = "user_name")
-    @Length(min = 5, max = 20)
+    @Length(min = 5, max = 36)
     private String userName;
 
     @Column(name = "email")

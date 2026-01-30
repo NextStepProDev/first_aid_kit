@@ -1,0 +1,1 @@
+ALTER TABLE app_user ALTER COLUMN user_name TYPE VARCHAR(36);
