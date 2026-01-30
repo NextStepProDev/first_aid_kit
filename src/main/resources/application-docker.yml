@@ -14,12 +14,14 @@ spring:
 server:
   port: 8081
 
-springdoc:
-  swagger-ui:
-    use-root-path: true
-    config-url: /v3/api-docs/swagger-config
-    urls:
-      - name: First Aid Kit API
-        url: /v3/api-docs
-    tryItOutEnabled: true
-    validator-url: none
+# Disable Swagger/OpenAPI in production
+  springdoc:
+    api-docs:
+      enabled: false
+    swagger-ui:
+      enabled: false
+
+    # Disable rate limiting requests count increase for production
+app:
+  rate-limit:
+    requests-per-minute: 10
