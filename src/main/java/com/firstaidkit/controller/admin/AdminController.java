@@ -4,11 +4,7 @@ import com.firstaidkit.controller.dto.admin.BroadcastEmailRequest;
 import com.firstaidkit.controller.dto.admin.DeleteUserRequest;
 import com.firstaidkit.controller.dto.admin.UserResponse;
 import com.firstaidkit.controller.dto.auth.MessageResponse;
-import com.firstaidkit.domain.exception.ResourceNotFoundException;
-import com.firstaidkit.infrastructure.database.entity.UserEntity;
-import com.firstaidkit.infrastructure.email.EmailService;
 import com.firstaidkit.service.AdminService;
-import com.firstaidkit.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -39,8 +35,6 @@ import org.springframework.web.bind.annotation.*;
 public class AdminController {
 
     private final AdminService adminService;
-    private final UserService userService;
-    private final EmailService emailService;
 
     @GetMapping("/users")
     @Operation(summary = "List all users",
@@ -116,20 +110,10 @@ public class AdminController {
         return new ResponseEntity<>(csvBytes, headers, HttpStatus.OK);
     }
     @PostMapping("/users/{userId}/email")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> sendEmailToUser(
-            @PathVariable Integer userId,
-            @RequestBody BroadcastEmailRequest request) {
-
-        UserEntity user = userService.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
-
-        emailService.sendSimpleMessage(
-                user.getEmail(),
-                request.subject(),
-                request.message()
-        );
-
+            @PathVariable @Positive Integer userId,
+            @Valid @RequestBody BroadcastEmailRequest request) {
+        adminService.sendEmailToUser(userId, request);
         return ResponseEntity.ok().build();
     }
 }

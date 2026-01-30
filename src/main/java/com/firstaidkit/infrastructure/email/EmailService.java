@@ -45,13 +45,4 @@ public class EmailService {
     private void sendEmailFallback(String to, String subject, String body, Exception e) {
         log.error("Failed to send email to {} after retries. Subject: {}. Error: {}", to, subject, e.getMessage());
     }
-
-    public void sendSimpleMessage(String to, String subject, String text) {
-        SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom("firstaidkit.team@gmail.com");
-        message.setTo(to);
-        message.setSubject(subject);
-        message.setText(text);
-        mailSender.send(message);
-    }
 }

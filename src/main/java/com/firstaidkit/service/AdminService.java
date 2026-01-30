@@ -3,6 +3,7 @@ package com.firstaidkit.service;
 import com.firstaidkit.controller.dto.admin.BroadcastEmailRequest;
 import com.firstaidkit.controller.dto.admin.UserResponse;
 import com.firstaidkit.domain.exception.InvalidPasswordException;
+import com.firstaidkit.domain.exception.ResourceNotFoundException;
 import com.firstaidkit.domain.exception.UserNotFoundException;
 import com.firstaidkit.infrastructure.database.entity.RoleEntity;
 import com.firstaidkit.infrastructure.database.entity.UserEntity;
@@ -124,6 +125,14 @@ public class AdminService {
 
         log.info("Admin {} exported {} user emails to CSV", adminEmail, users.size());
         return csv.toString();
+    }
+
+    public void sendEmailToUser(Integer userId, BroadcastEmailRequest request) {
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+
+        emailService.sendEmail(user.getEmail(), request.subject(), request.message());
+        log.info("Admin sent email to user {} ({}): '{}'", userId, user.getEmail(), request.subject());
     }
 
     private String escapeCsv(String value) {
