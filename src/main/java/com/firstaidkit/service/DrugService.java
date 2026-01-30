@@ -6,6 +6,7 @@ import com.firstaidkit.controller.dto.drug.DrugResponse;
 import com.firstaidkit.controller.dto.drug.DrugStatistics;
 import com.firstaidkit.domain.exception.DrugNotFoundException;
 import com.firstaidkit.domain.exception.EmailSendingException;
+import com.firstaidkit.domain.exception.InvalidPasswordException;
 import com.firstaidkit.infrastructure.database.entity.DrugEntity;
 import com.firstaidkit.infrastructure.database.entity.DrugFormEntity;
 import com.firstaidkit.infrastructure.database.entity.UserEntity;
@@ -24,7 +25,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -45,6 +48,7 @@ public class DrugService {
     private final CurrentUserService currentUserService;
     private final UserRepository userRepository;
     private final UserService userService;
+    private final PasswordEncoder passwordEncoder;
 
 
     @Caching(evict = {@CacheEvict(value = {"drugsSearch", "drugStatistics"}, allEntries = true), @CacheEvict(value = "drugById", keyGenerator = "userAwareCacheKeyGenerator")})
@@ -82,6 +86,28 @@ public class DrugService {
 
         drugRepository.delete(entity);
         log.info("User {} successfully deleted drug with ID: {}", userId, id);
+    }
+
+    @Transactional
+    @CacheEvict(value = {"drugById", "drugsSearch", "drugStatistics"}, allEntries = true)
+    public long deleteAllDrugs(String password) {
+        Integer userId = currentUserService.getCurrentUserId();
+        String userEmail = currentUserService.getCurrentUserEmail();
+        log.info("User {} attempting to delete all drugs", userEmail);
+
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalStateException("User not found"));
+
+        if (!passwordEncoder.matches(password, user.getPassword())) {
+            log.warn("Invalid password provided by user {} for delete all drugs operation", userEmail);
+            throw new InvalidPasswordException("Invalid password");
+        }
+
+        long count = drugRepository.countByOwnerUserId(userId);
+        drugRepository.deleteAllByOwnerUserId(userId);
+        log.info("User {} successfully deleted all {} drugs", userEmail, count);
+
+        return count;
     }
 
     @Caching(evict = {@CacheEvict(value = {"drugsSearch", "drugStatistics"}, allEntries = true), @CacheEvict(value = "drugById", keyGenerator = "userAwareCacheKeyGenerator")})

@@ -11,6 +11,7 @@ import com.firstaidkit.domain.exception.DrugNotFoundException;
 import com.firstaidkit.domain.exception.EmailSendingException;
 import com.firstaidkit.domain.exception.InvalidSortFieldException;
 import com.firstaidkit.infrastructure.cache.UserAwareCacheKeyGenerator;
+import com.firstaidkit.infrastructure.csv.CsvExportService;
 import com.firstaidkit.infrastructure.pdf.PdfExportService;
 import com.firstaidkit.infrastructure.security.JwtAuthenticationFilter;
 import com.firstaidkit.infrastructure.security.JwtTokenProvider;
@@ -63,6 +64,10 @@ public class GlobalExceptionIntegrationTest {
     @MockitoBean
     @SuppressWarnings("unused")
     private PdfExportService pdfExportService;
+
+    @MockitoBean
+    @SuppressWarnings("unused")
+    private CsvExportService csvExportService;
 
     @MockitoBean
     @SuppressWarnings("unused")

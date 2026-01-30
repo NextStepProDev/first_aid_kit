@@ -35,14 +35,12 @@
         </rollingPolicy>
     </appender>
 
-    <!-- DEV / LOCAL profile - console only -->
-    <springProfile name="local,dev,test">
-        <root level="INFO">
-            <appender-ref ref="CONSOLE"/>
-        </root>
-    </springProfile>
+    <!-- Default root logger (always active) -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+    </root>
 
-    <!-- DOCKER profile - console + file -->
+    <!-- DOCKER profile - add file appender -->
     <springProfile name="docker">
         <root level="INFO">
             <appender-ref ref="CONSOLE"/>

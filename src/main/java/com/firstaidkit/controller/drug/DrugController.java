@@ -1,6 +1,9 @@
 package com.firstaidkit.controller.drug;
 
 import com.firstaidkit.controller.dto.drug.*;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import com.firstaidkit.infrastructure.csv.CsvExportService;
 import com.firstaidkit.infrastructure.pdf.PdfExportService;
 import com.firstaidkit.service.DrugService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -37,6 +40,7 @@ public class DrugController {
 
     private final DrugService drugService;
     private final PdfExportService pdfExportService;
+    private final CsvExportService csvExportService;
 
     private static final int MAX_SEARCH_PAGE_SIZE = 100;
     private static final int MAX_PDF_PAGE_SIZE = 1000;
@@ -65,6 +69,22 @@ public class DrugController {
         log.info("Deleting drug with ID: {}", id);
         drugService.deleteDrug(id);
         return ResponseEntity.noContent().build(); // 204 No Content
+    }
+
+    @PostMapping("/delete-all")
+    @Operation(
+            summary = "Delete all drugs",
+            description = "Permanently deletes all drugs for the current user. Requires password confirmation."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "All drugs deleted successfully"),
+            @ApiResponse(responseCode = "401", description = "Invalid password")
+    })
+    public ResponseEntity<Map<String, Long>> deleteAllDrugs(@Valid @RequestBody DeleteAllDrugsRequest request) {
+        log.info("Request to delete all drugs");
+        long deletedCount = drugService.deleteAllDrugs(request.password());
+        log.info("Deleted {} drugs", deletedCount);
+        return ResponseEntity.ok(Map.of("deletedCount", deletedCount));
     }
 
     @PutMapping("/{id}")
@@ -132,6 +152,45 @@ public class DrugController {
                 .headers(headers)
                 .contentType(MediaType.APPLICATION_PDF)
                 .body(pdf);
+    }
+
+    @GetMapping("/export/csv")
+    @Operation(
+            summary = "Export drugs list to CSV",
+            description = """
+                    Generates and returns a CSV file containing the list of drugs.
+                    The file uses semicolon (;) as separator for Polish Excel compatibility.
+                    📎 Use the URL under "Request URL" to download the file directly in your browser.
+                    """
+    )
+    public ResponseEntity<byte[]> exportDrugsToCsv(
+            @RequestParam(required = false) String name,
+            @RequestParam(required = false) String form,
+            @RequestParam(required = false) Boolean expired,
+            @RequestParam(required = false) @Min(value = 2025, message = "Year must be >= 2025")
+            @Max(value = 2100, message = "Year must be <= 2100") Integer expirationUntilYear,
+            @RequestParam(required = false)
+            @Min(value = 1, message = "Month must be between 1 and 12")
+            @Max(value = 12, message = "Month must be between 1 and 12") Integer expirationUntilMonth,
+            @ParameterObject Pageable pageable
+    ) {
+        if (pageable.getPageSize() > MAX_PDF_PAGE_SIZE) {
+            throw new IllegalArgumentException("Maximum page size for CSV export is " + MAX_PDF_PAGE_SIZE + ".");
+        }
+        Page<DrugResponse> resultPage = drugService.searchDrugs(
+                name, form, expired, expirationUntilYear, expirationUntilMonth, pageable
+        );
+        List<DrugResponse> drugs = resultPage.getContent();
+        byte[] csv = csvExportService.generateCsv(drugs);
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Content-Disposition", "attachment; filename=drugs_list.csv");
+
+        return ResponseEntity
+                .ok()
+                .headers(headers)
+                .contentType(new MediaType("text", "csv", java.nio.charset.StandardCharsets.UTF_8))
+                .body(csv);
     }
 
     @GetMapping("/statistics")

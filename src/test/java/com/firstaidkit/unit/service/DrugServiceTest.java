@@ -6,6 +6,7 @@ import com.firstaidkit.controller.dto.drug.DrugResponse;
 import com.firstaidkit.controller.dto.drug.DrugStatistics;
 import com.firstaidkit.domain.exception.DrugNotFoundException;
 import com.firstaidkit.domain.exception.EmailSendingException;
+import com.firstaidkit.domain.exception.InvalidPasswordException;
 import com.firstaidkit.infrastructure.database.entity.DrugEntity;
 import com.firstaidkit.infrastructure.database.entity.DrugFormEntity;
 import com.firstaidkit.infrastructure.database.entity.UserEntity;
@@ -19,6 +20,7 @@ import com.firstaidkit.service.DrugFormService;
 import com.firstaidkit.service.DrugService;
 import com.firstaidkit.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -63,6 +65,8 @@ class DrugServiceTest {
     private UserRepository userRepository;
     @Mock
     private UserService userService;
+    @Mock
+    private PasswordEncoder passwordEncoder;
     @InjectMocks
     private DrugService drugService;
 
@@ -251,12 +255,12 @@ class DrugServiceTest {
         void defaultVariantShouldDelegateToMonthAhead() {
             DrugRepository drugRepository = Mockito.mock(DrugRepository.class);
             CurrentUserService currentUserService = Mockito.mock(CurrentUserService.class);
-            DrugMapper drugMapper = Mockito.mock(DrugMapper.class); // jeśli go masz
-            EmailService emailService = Mockito.mock(EmailService.class); // jeśli go masz
-            // Dodaj tu inne mocki, jeśli Twój konstruktor ich wymaga
+            DrugMapper drugMapper = Mockito.mock(DrugMapper.class);
+            EmailService emailService = Mockito.mock(EmailService.class);
+            PasswordEncoder passwordEncoder = Mockito.mock(PasswordEncoder.class);
 
             // 2. Tworzymy ręcznie instancję serwisu, przekazując te mocki
-            DrugService serviceInstance = new DrugService(drugRepository, drugFormService, drugMapper, emailService, currentUserService, userRepository, userService);
+            DrugService serviceInstance = new DrugService(drugRepository, drugFormService, drugMapper, emailService, currentUserService, userRepository, userService, passwordEncoder);
 
             // 3. Robimy szpiega na czystym obiekcie
             DrugService spy = Mockito.spy(serviceInstance);
@@ -421,6 +425,133 @@ class DrugServiceTest {
             assertThat(page.getTotalElements()).isEqualTo(1);
             assertThat(page.getContent()).extracting(DrugResponse::getDrugId, DrugResponse::getDrugName).containsExactly(tuple(10, "Profen"));
             verify(drugRepository).findAll(ArgumentMatchers.<Specification<DrugEntity>>any(), eq(pageable));
+        }
+    }
+
+    // ---------------------- deleteAllDrugs ----------------------
+    @Nested
+    @DisplayName("deleteAllDrugs")
+    class DeleteAllDrugs {
+
+        @Test
+        void shouldDeleteAllDrugsAndReturnCount() {
+            UserEntity user = UserEntity.builder().userId(TEST_USER_ID).email(TEST_USER_EMAIL).password("encoded").build();
+            when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.of(user));
+            when(passwordEncoder.matches("correctPass", "encoded")).thenReturn(true);
+            when(drugRepository.countByOwnerUserId(TEST_USER_ID)).thenReturn(5L);
+
+            long count = drugService.deleteAllDrugs("correctPass");
+
+            assertThat(count).isEqualTo(5);
+            verify(drugRepository).deleteAllByOwnerUserId(TEST_USER_ID);
+        }
+
+        @Test
+        void shouldThrowWhenInvalidPassword() {
+            UserEntity user = UserEntity.builder().userId(TEST_USER_ID).email(TEST_USER_EMAIL).password("encoded").build();
+            when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.of(user));
+            when(passwordEncoder.matches("wrongPass", "encoded")).thenReturn(false);
+
+            assertThatThrownBy(() -> drugService.deleteAllDrugs("wrongPass"))
+                    .isInstanceOf(InvalidPasswordException.class)
+                    .hasMessageContaining("Invalid password");
+
+            verify(drugRepository, never()).deleteAllByOwnerUserId(anyInt());
+        }
+
+        @Test
+        void shouldReturnZeroWhenNoDrugs() {
+            UserEntity user = UserEntity.builder().userId(TEST_USER_ID).email(TEST_USER_EMAIL).password("encoded").build();
+            when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.of(user));
+            when(passwordEncoder.matches("correctPass", "encoded")).thenReturn(true);
+            when(drugRepository.countByOwnerUserId(TEST_USER_ID)).thenReturn(0L);
+
+            long count = drugService.deleteAllDrugs("correctPass");
+
+            assertThat(count).isEqualTo(0);
+            verify(drugRepository).deleteAllByOwnerUserId(TEST_USER_ID);
+        }
+    }
+
+    // ---------------------- sendScheduledExpiryAlerts ----------------------
+    @Nested
+    @DisplayName("sendScheduledExpiryAlerts")
+    class SendScheduledExpiryAlerts {
+
+        @Test
+        void shouldDelegateToSendForAllUsers() {
+            DrugRepository drugRepoMock = Mockito.mock(DrugRepository.class);
+            DrugMapper drugMapperMock = Mockito.mock(DrugMapper.class);
+            EmailService emailServiceMock = Mockito.mock(EmailService.class);
+            CurrentUserService currentUserMock = Mockito.mock(CurrentUserService.class);
+            UserRepository userRepoMock = Mockito.mock(UserRepository.class);
+            UserService userServiceMock = Mockito.mock(UserService.class);
+            PasswordEncoder passwordEncoderMock = Mockito.mock(PasswordEncoder.class);
+
+            DrugService serviceInstance = new DrugService(drugRepoMock, drugFormService, drugMapperMock,
+                    emailServiceMock, currentUserMock, userRepoMock, userServiceMock, passwordEncoderMock);
+            DrugService spy = Mockito.spy(serviceInstance);
+
+            doNothing().when(spy).sendExpiryAlertEmailsForAllUsers(anyInt(), anyInt());
+
+            spy.sendScheduledExpiryAlerts();
+
+            verify(spy).sendExpiryAlertEmailsForAllUsers(anyInt(), anyInt());
+        }
+    }
+
+    // ---------------------- sendExpiryAlertEmailsForAllUsers ----------------------
+    @Nested
+    @DisplayName("sendExpiryAlertEmailsForAllUsers")
+    class SendExpiryAlertEmailsForAllUsers {
+
+        @Test
+        void shouldSendAlertsForAllUsersWithExpiringDrugs() {
+            OffsetDateTime end = DateUtils.buildExpirationDate(YEAR_NOW_PLUS_1, 6);
+            when(drugRepository.findDistinctOwnerIdsWithExpiringDrugs(end)).thenReturn(List.of(10, 20));
+
+            UserEntity user10 = UserEntity.builder().userId(10).email("u10@x.com").build();
+            UserEntity user20 = UserEntity.builder().userId(20).email("u20@x.com").build();
+            when(userRepository.findByUserId(10)).thenReturn(Optional.of(user10));
+            when(userRepository.findByUserId(20)).thenReturn(Optional.of(user20));
+
+            DrugEntity drug10 = DrugEntity.builder().drugId(1).drugName("D10").expirationDate(end).alertSent(false).build();
+            DrugEntity drug20 = DrugEntity.builder().drugId(2).drugName("D20").expirationDate(end).alertSent(false).build();
+            when(drugRepository.findByOwnerUserIdAndExpirationDateLessThanEqualAndAlertSentFalse(10, end))
+                    .thenReturn(List.of(drug10));
+            when(drugRepository.findByOwnerUserIdAndExpirationDateLessThanEqualAndAlertSentFalse(20, end))
+                    .thenReturn(List.of(drug20));
+
+            drugService.sendExpiryAlertEmailsForAllUsers(YEAR_NOW_PLUS_1, 6);
+
+            verify(emailService).sendEmail(eq("u10@x.com"), anyString(), anyString());
+            verify(emailService).sendEmail(eq("u20@x.com"), anyString(), anyString());
+            verify(drugRepository).save(argThat(d -> d.getDrugId() == 1 && d.isAlertSent()));
+            verify(drugRepository).save(argThat(d -> d.getDrugId() == 2 && d.isAlertSent()));
+        }
+
+        @Test
+        void shouldSkipUsersWithNoEmail() {
+            OffsetDateTime end = DateUtils.buildExpirationDate(YEAR_NOW_PLUS_1, 6);
+            when(drugRepository.findDistinctOwnerIdsWithExpiringDrugs(end)).thenReturn(List.of(10));
+
+            UserEntity userNoEmail = UserEntity.builder().userId(10).email(null).build();
+            when(userRepository.findByUserId(10)).thenReturn(Optional.of(userNoEmail));
+
+            drugService.sendExpiryAlertEmailsForAllUsers(YEAR_NOW_PLUS_1, 6);
+
+            verify(emailService, never()).sendEmail(anyString(), anyString(), anyString());
+        }
+
+        @Test
+        void shouldSkipUsersNotFound() {
+            OffsetDateTime end = DateUtils.buildExpirationDate(YEAR_NOW_PLUS_1, 6);
+            when(drugRepository.findDistinctOwnerIdsWithExpiringDrugs(end)).thenReturn(List.of(99));
+            when(userRepository.findByUserId(99)).thenReturn(Optional.empty());
+
+            drugService.sendExpiryAlertEmailsForAllUsers(YEAR_NOW_PLUS_1, 6);
+
+            verify(emailService, never()).sendEmail(anyString(), anyString(), anyString());
         }
     }
 }

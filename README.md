@@ -257,7 +257,7 @@ docker-compose up
 ### 3. Access the application:
 
 - Swagger UI: [http://localhost:8081/swagger-ui/index.html](http://localhost:8081/swagger-ui/index.html)
-- pgAdmin: [http://localhost:5050](http://localhost:5050) (or the value of `PGADMIN_PORT` from `.env`)
+- pgAdmin: [http://localhost:5050](http://localhost:5050) (or the value from `docker-compose.yml`)
 
 ### 4. Persistent database data
 

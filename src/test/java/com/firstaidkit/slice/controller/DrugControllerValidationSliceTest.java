@@ -5,6 +5,7 @@ import com.firstaidkit.config.TestCacheConfig;
 import com.firstaidkit.config.TestSecurityConfig;
 import com.firstaidkit.controller.drug.DrugController;
 import com.firstaidkit.infrastructure.cache.UserAwareCacheKeyGenerator;
+import com.firstaidkit.infrastructure.csv.CsvExportService;
 import com.firstaidkit.infrastructure.pdf.PdfExportService;
 import com.firstaidkit.infrastructure.security.JwtAuthenticationFilter;
 import com.firstaidkit.infrastructure.security.JwtTokenProvider;
@@ -42,6 +43,9 @@ public class DrugControllerValidationSliceTest {
 
     @MockitoBean
     private PdfExportService pdfExportService;
+
+    @MockitoBean
+    private CsvExportService csvExportService;
 
     @MockitoBean
     private UserAwareCacheKeyGenerator userAwareCacheKeyGenerator;
