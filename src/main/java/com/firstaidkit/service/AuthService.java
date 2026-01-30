@@ -8,7 +8,6 @@ import com.firstaidkit.infrastructure.database.entity.UserEntity;
 import com.firstaidkit.infrastructure.database.repository.DrugRepository;
 import com.firstaidkit.infrastructure.database.repository.RoleRepository;
 import com.firstaidkit.infrastructure.database.repository.UserRepository;
-import com.firstaidkit.infrastructure.email.EmailService;
 import com.firstaidkit.infrastructure.security.CurrentUserService;
 import com.firstaidkit.infrastructure.security.CustomUserDetailService;
 import com.firstaidkit.infrastructure.security.CustomUserDetails;
@@ -19,6 +18,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -47,7 +47,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final CustomUserDetailService userDetailService;
     private final CurrentUserService currentUserService;
-    private final EmailService emailService;
+    private final EmailVerificationService emailVerificationService;
 
     @Value("${app.admin.email}")
     private String adminEmail;
@@ -83,6 +83,8 @@ public class AuthService {
                     userDetails.getUsername(),
                     userDetails.getEmail()
             );
+        } catch (DisabledException e) {
+            throw new DisabledException("Konto nieaktywne. Sprawdz email i potwierdz rejestracje.");
         } catch (BadCredentialsException e) {
             handleFailedLogin(request.getEmail());
             throw new BadCredentialsException("Invalid email or password");
@@ -121,7 +123,7 @@ public class AuthService {
     }
 
     @Transactional
-    public JwtResponse register(RegisterRequest request) {
+    public MessageResponse register(RegisterRequest request) {
         if (userRepository.existsByUserName(request.getUsername())) {
             throw new IllegalArgumentException("Username already exists");
         }
@@ -149,7 +151,7 @@ public class AuthService {
                 .email(request.getEmail())
                 .password(passwordEncoder.encode(request.getPassword()))
                 .name(request.getName())
-                .active(true)
+                .active(false)
                 .role(roles)
                 .createdAt(OffsetDateTime.now())
                 .build();
@@ -157,13 +159,9 @@ public class AuthService {
         UserEntity savedUser = userRepository.save(user);
         log.info("New user registered: {}", savedUser.getUserName());
 
-        sendWelcomeEmail(savedUser);
+        emailVerificationService.createVerificationToken(savedUser);
 
-        // Auto-login after registration
-        return login(LoginRequest.builder()
-                .email(request.getEmail())
-                .password(request.getPassword())
-                .build());
+        return MessageResponse.of("Rejestracja przebiegla pomyslnie. Sprawdz email, aby aktywowac konto.");
     }
 
     public JwtResponse refreshToken(RefreshTokenRequest request) {
@@ -217,32 +215,6 @@ public class AuthService {
         log.info("Deleted user account: {}", userEmail);
 
         SecurityContextHolder.clearContext();
-    }
-
-    private void sendWelcomeEmail(UserEntity user) {
-        String subject = "Welcome to First Aid Kit!";
-        String body = buildWelcomeEmailBody(user.getName() != null ? user.getName() : user.getUserName());
-        emailService.sendEmailAsync(user.getEmail(), subject, body);
-    }
-
-    private String buildWelcomeEmailBody(String name) {
-        return """
-            Hello %s,
-
-            Welcome to First Aid Kit Manager! Your account has been created successfully.
-
-            With First Aid Kit Manager, you can:
-            • Track your medications and their expiry dates
-            • Get alerts before your medicines expire
-            • Manage your personal first aid supplies
-
-            Start by adding your first medication to your kit.
-
-            If you have any questions, feel free to reach out to our support team.
-
-            Stay healthy!
-            The First Aid Kit Team
-            """.formatted(name);
     }
 
     @Transactional(readOnly = true)

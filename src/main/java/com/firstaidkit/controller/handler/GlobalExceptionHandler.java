@@ -5,6 +5,7 @@ import com.firstaidkit.controller.dto.error.FieldValidationError;
 import com.firstaidkit.controller.dto.error.ValidationErrorMessageDTO;
 import com.firstaidkit.domain.exception.*;
 import jakarta.validation.ConstraintViolationException;
+import org.springframework.security.authentication.DisabledException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.core.PropertyReferenceException;
@@ -163,6 +164,13 @@ public class GlobalExceptionHandler {
         log.warn("No resource found: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(new ErrorMessage(404, "Resource not found"));
+    }
+
+    @ExceptionHandler(DisabledException.class)
+    public ResponseEntity<ErrorMessage> handleDisabledException(DisabledException ex) {
+        log.warn("Disabled account login attempt: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                .body(new ErrorMessage(403, ex.getMessage()));
     }
 
     @ExceptionHandler(BadCredentialsException.class)

@@ -2,6 +2,7 @@ package com.firstaidkit.controller.auth;
 
 import com.firstaidkit.controller.dto.auth.*;
 import com.firstaidkit.service.AuthService;
+import com.firstaidkit.service.EmailVerificationService;
 import com.firstaidkit.service.PasswordResetService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -25,19 +26,44 @@ public class AuthController {
 
     private final AuthService authService;
     private final PasswordResetService passwordResetService;
+    private final EmailVerificationService emailVerificationService;
     @Value("${app.frontend.url}")
     private String frontendUrl;
 
     @PostMapping("/register")
-    @Operation(summary = "Register a new user", description = "Creates a new user account and returns JWT tokens")
+    @Operation(summary = "Register a new user", description = "Creates a new user account and sends a verification email")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "201", description = "User registered successfully",
-                    content = @Content(schema = @Schema(implementation = JwtResponse.class))),
+                    content = @Content(schema = @Schema(implementation = MessageResponse.class))),
             @ApiResponse(responseCode = "400", description = "Invalid input or user already exists")
     })
-    public ResponseEntity<JwtResponse> register(@Valid @RequestBody RegisterRequest request) {
-        JwtResponse response = authService.register(request);
+    public ResponseEntity<MessageResponse> register(@Valid @RequestBody RegisterRequest request) {
+        MessageResponse response = authService.register(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @GetMapping("/verify-email")
+    @Operation(summary = "Verify email address", description = "Activates user account using the verification token from email")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Email verified successfully",
+                    content = @Content(schema = @Schema(implementation = MessageResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid or expired verification token")
+    })
+    public ResponseEntity<MessageResponse> verifyEmail(@RequestParam String token) {
+        emailVerificationService.verifyEmail(token);
+        return ResponseEntity.ok(MessageResponse.of("Konto zostalo aktywowane. Mozesz sie teraz zalogowac."));
+    }
+
+    @PostMapping("/resend-verification")
+    @Operation(summary = "Resend verification email", description = "Sends a new verification email to the given address")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "If the email exists and is not yet verified, a new link has been sent",
+                    content = @Content(schema = @Schema(implementation = MessageResponse.class))),
+            @ApiResponse(responseCode = "400", description = "Invalid email format")
+    })
+    public ResponseEntity<MessageResponse> resendVerification(@Valid @RequestBody ForgotPasswordRequest request) {
+        emailVerificationService.resendVerification(request.getEmail());
+        return ResponseEntity.ok(MessageResponse.of("Jesli konto wymaga weryfikacji, nowy link zostal wyslany."));
     }
 
     @PostMapping("/login")

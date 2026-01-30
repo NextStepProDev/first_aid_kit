@@ -14,6 +14,7 @@ import com.firstaidkit.infrastructure.security.CustomUserDetailService;
 import com.firstaidkit.infrastructure.security.CustomUserDetails;
 import com.firstaidkit.infrastructure.security.JwtTokenProvider;
 import com.firstaidkit.service.AuthService;
+import com.firstaidkit.service.EmailVerificationService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -69,6 +70,8 @@ class AuthServiceTest {
     private CurrentUserService currentUserService;
     @Mock
     private EmailService emailService;
+    @Mock
+    private EmailVerificationService emailVerificationService;
 
     @InjectMocks
     private AuthService authService;
@@ -205,7 +208,7 @@ class AuthServiceTest {
     class Register {
 
         @Test
-        void shouldCreateUserAndReturnJwt() {
+        void shouldCreateUserAndReturnMessage() {
             RegisterRequest request = RegisterRequest.builder()
                     .username(TEST_USERNAME).email(TEST_EMAIL)
                     .password(TEST_PASSWORD).name("Test").build();
@@ -221,22 +224,16 @@ class AuthServiceTest {
                 return u;
             });
 
-            // login called after register
-            UserEntity savedUser = buildUserEntity();
-            when(userRepository.findByEmail(TEST_EMAIL)).thenReturn(savedUser);
-            CustomUserDetails userDetails = buildUserDetails();
-            Authentication auth = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-            when(authenticationManager.authenticate(any())).thenReturn(auth);
-            when(jwtTokenProvider.generateAccessToken(auth)).thenReturn("access");
-            when(jwtTokenProvider.generateRefreshToken(auth)).thenReturn("refresh");
-            lenient().when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.of(savedUser));
+            MessageResponse response = authService.register(request);
 
-            JwtResponse response = authService.register(request);
-
-            assertThat(response.getAccessToken()).isEqualTo("access");
-            // register saves the new user, then login internally may save for resetFailedAttempts/updateLastLogin
+            assertThat(response.getMessage()).contains("Rejestracja przebiegla pomyslnie");
             verify(userRepository, atLeast(1)).save(any(UserEntity.class));
-            verify(emailService).sendEmailAsync(eq(TEST_EMAIL), anyString(), anyString());
+            verify(emailVerificationService).createVerificationToken(any(UserEntity.class));
+
+            // Verify user is created as inactive
+            ArgumentCaptor<UserEntity> captor = ArgumentCaptor.forClass(UserEntity.class);
+            verify(userRepository).save(captor.capture());
+            assertThat(captor.getValue().getActive()).isFalse();
         }
 
         @Test
@@ -286,27 +283,10 @@ class AuthServiceTest {
                 return u;
             });
 
-            // login after register
-            UserEntity savedUser = buildUserEntity();
-            savedUser.setEmail(adminEmail);
-            savedUser.setRole(Set.of(userRole, adminRole));
-            when(userRepository.findByEmail(adminEmail)).thenReturn(savedUser);
-            CustomUserDetails userDetails = new CustomUserDetails(
-                    adminEmail, ENCODED_PASSWORD, true,
-                    List.of(new SimpleGrantedAuthority("ROLE_USER"), new SimpleGrantedAuthority("ROLE_ADMIN")),
-                    TEST_USER_ID, adminEmail
-            );
-            Authentication auth = new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
-            when(authenticationManager.authenticate(any())).thenReturn(auth);
-            when(jwtTokenProvider.generateAccessToken(auth)).thenReturn("access");
-            when(jwtTokenProvider.generateRefreshToken(auth)).thenReturn("refresh");
-            lenient().when(userRepository.findById(TEST_USER_ID)).thenReturn(Optional.of(savedUser));
-
             authService.register(request);
 
             ArgumentCaptor<UserEntity> captor = ArgumentCaptor.forClass(UserEntity.class);
             verify(userRepository, atLeast(1)).save(captor.capture());
-            // First save is the registration save with roles assigned
             UserEntity registeredUser = captor.getAllValues().get(0);
             assertThat(registeredUser.getRole()).extracting(RoleEntity::getRole)
                     .containsExactlyInAnyOrder("USER", "ADMIN");
