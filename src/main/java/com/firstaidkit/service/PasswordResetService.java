@@ -173,7 +173,7 @@ public class PasswordResetService {
                     .build()
                     .toUriString();
 
-            String subject = "Password Reset Request - First Aid Kit";
+            String subject = "\uD83D\uDD10 Password Reset Request - First Aid Kit";
             String body = buildPasswordResetEmailBody(
                     user.getName() != null ? user.getName() : user.getUserName(),
                     resetLink
@@ -187,7 +187,7 @@ public class PasswordResetService {
 
     private void sendPasswordChangedConfirmationEmail(UserEntity user) {
         try {
-            String subject = "Password Changed - First Aid Kit";
+            String subject = "\u2705 Password Changed - First Aid Kit";
             String body = buildPasswordChangedEmailBody(
                     user.getName() != null ? user.getName() : user.getUserName()
             );
@@ -199,32 +199,32 @@ public class PasswordResetService {
 
     private String buildPasswordResetEmailBody(String name, String resetLink) {
         return """
-            Hello %s,
+            \uD83D\uDC4B Hello %s,
 
-            We received a request to reset your password for your First Aid Kit account.
+            \uD83D\uDD10 We received a request to reset your password for your First Aid Kit account.
 
-            Click the link below to reset your password:
+            \uD83D\uDD17 Click the link below to reset your password:
             %s
 
-            This link will expire in %d minutes.
+            \u23F3 This link will expire in %d minutes.
 
             If you did not request a password reset, please ignore this email. Your password will remain unchanged.
 
-            Stay healthy!
-            The First Aid Kit Team
+            \uD83D\uDC9A Stay healthy!
+            The First Aid Kit Team \uD83C\uDFE5
             """.formatted(name, resetLink, TOKEN_EXPIRATION_MINUTES);
     }
 
     private String buildPasswordChangedEmailBody(String name) {
         return """
-            Hello %s,
+            \uD83D\uDC4B Hello %s,
 
-            Your password has been successfully changed.
+            \u2705 Your password has been successfully changed.
 
-            If you did not make this change, please contact our support team immediately.
+            \u26A0\uFE0F If you did not make this change, please contact our support team immediately.
 
-            Stay healthy!
-            The First Aid Kit Team
+            \uD83D\uDC9A Stay healthy!
+            The First Aid Kit Team \uD83C\uDFE5
             """.formatted(name);
     }
 }

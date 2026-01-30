@@ -114,7 +114,7 @@ public class EmailVerificationService {
 
     private void sendVerificationEmail(UserEntity user, String verificationUrl) {
         try {
-            String subject = "Potwierdz swoj adres email - First Aid Kit";
+            String subject = "\u2709\uFE0F Potwierdz swoj adres email - First Aid Kit";
             String body = buildVerificationEmailBody(
                     user.getName() != null ? user.getName() : user.getUserName(),
                     verificationUrl
@@ -128,19 +128,19 @@ public class EmailVerificationService {
 
     private String buildVerificationEmailBody(String name, String verificationUrl) {
         return """
-            Hello %s,
+            \uD83D\uDC4B Hello %s,
 
-            Thank you for registering with First Aid Kit Manager!
+            \u2764\uFE0F Thank you for registering with First Aid Kit Manager! We're happy to have you on board.
 
-            Please click the link below to verify your email address and activate your account:
+            \uD83D\uDD17 Please click the link below to verify your email address and activate your account:
             %s
 
-            This link will expire in %d hours.
+            \u23F3 This link will expire in %d hours.
 
             If you did not create an account, please ignore this email.
 
-            Stay healthy!
-            The First Aid Kit Team
+            \uD83D\uDC9A Stay healthy!
+            The First Aid Kit Team \uD83C\uDFE5
             """.formatted(name, verificationUrl, TOKEN_EXPIRATION_HOURS);
     }
 }

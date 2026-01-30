@@ -194,24 +194,25 @@ public class DrugService {
             return 0;
         }
 
-        String subject = "Drug Expiry Alert - " + drugsToAlert.size() + " drug(s) expiring soon";
+        String subject = "\uD83D\uDC8A Drug Expiry Alert - " + drugsToAlert.size() + " drug(s) expiring soon";
         StringBuilder messageBuilder = new StringBuilder();
-        messageBuilder.append("Attention!\n\n");
-        messageBuilder.append("The following drugs in your first aid kit are about to expire:\n\n");
+        messageBuilder.append("⚠\uFE0F Attention!\n\n");
+        messageBuilder.append("The following drugs in your first aid kit are about to expire! ⏳\n");
+        messageBuilder.append("Please check them as soon as possible before it's too late! ❌\n\n");
 
         for (int i = 0; i < drugsToAlert.size(); i++) {
             DrugEntity drug = drugsToAlert.get(i);
             messageBuilder.append(String.format("%d. %s%n", i + 1, drug.getDrugName()));
-            messageBuilder.append(String.format("   Expiration date: %s%n", drug.getExpirationDate().toLocalDate()));
+            messageBuilder.append(String.format("   \uD83D\uDCC5 Expiration date: %s%n", drug.getExpirationDate().toLocalDate()));
             if (drug.getDrugDescription() != null && !drug.getDrugDescription().isBlank()) {
-                messageBuilder.append(String.format("   Description: %s%n", drug.getDrugDescription()));
+                messageBuilder.append(String.format("   \uD83D\uDCDD Description: %s%n", drug.getDrugDescription()));
             }
             messageBuilder.append("\n");
         }
 
-        messageBuilder.append("Please check these items as soon as possible!\n\n");
-        messageBuilder.append("Take care of your health!\n");
-        messageBuilder.append("Your First Aid Kit");
+        messageBuilder.append("✅ Please check these items and replace expired drugs!\n\n");
+        messageBuilder.append("\uD83D\uDC9A Take care of your health!\n");
+        messageBuilder.append("Your First Aid Kit \uD83C\uDFE5");
 
         try {
             emailService.sendEmail(recipientEmail, subject, messageBuilder.toString());
