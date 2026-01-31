@@ -115,8 +115,8 @@ public class DrugControllerValidationSliceTest {
     static Stream<Arguments> invalidDescriptionProvider() {
         return Stream.of(
                 Arguments.of(true, "Painkiller for fever and inflammation"),
-                Arguments.of(false, ""),
-                Arguments.of(false, null)
+                Arguments.of(true, ""),
+                Arguments.of(true, null)
         );
     }
 

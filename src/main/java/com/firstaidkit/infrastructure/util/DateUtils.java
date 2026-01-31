@@ -14,4 +14,11 @@ public class DateUtils {
                 .atStartOfDay(EUROPE_WARSAW)
                 .toOffsetDateTime();
     }
+
+    public static OffsetDateTime startOfToday() {
+        return OffsetDateTime.now(EUROPE_WARSAW)
+                .toLocalDate()
+                .atStartOfDay(EUROPE_WARSAW)
+                .toOffsetDateTime();
+    }
 }

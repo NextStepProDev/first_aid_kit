@@ -5,7 +5,6 @@ import com.firstaidkit.controller.dto.drug.DrugFormDTO;
 import com.firstaidkit.controller.dto.drug.DrugResponse;
 import com.firstaidkit.controller.dto.drug.DrugStatistics;
 import com.firstaidkit.domain.exception.DrugNotFoundException;
-import com.firstaidkit.domain.exception.EmailSendingException;
 import com.firstaidkit.domain.exception.InvalidPasswordException;
 import com.firstaidkit.infrastructure.database.entity.DrugEntity;
 import com.firstaidkit.infrastructure.database.entity.DrugFormEntity;
@@ -221,77 +220,6 @@ class DrugServiceTest {
 
             verify(drugRepository, never()).save(any(DrugEntity.class));
             verifyNoInteractions(drugFormService);
-        }
-    }
-
-    // ---------------------- sendExpiryAlertEmails ----------------------
-    @Nested
-    @DisplayName("sendExpiryAlertEmails")
-    class SendExpiryAlerts {
-        @Test
-        void shouldSendAndMarkAlertSent() {
-            OffsetDateTime end = DateUtils.buildExpirationDate(YEAR_NOW_PLUS_1, 8);
-            DrugEntity d = DrugEntity.builder().drugId(1).drugName("Old Drug").expirationDate(end).alertSent(false).build();
-            when(drugRepository.findByOwnerUserIdAndExpirationDateLessThanEqualAndAlertSentFalse(TEST_USER_ID, end)).thenReturn(List.of(d));
-            when(drugRepository.save(any(DrugEntity.class))).thenAnswer(inv -> inv.getArgument(0));
-
-            drugService.sendExpiryAlertEmailsForCurrentUser(YEAR_NOW_PLUS_1, 8);
-
-            verify(emailService).sendEmail(eq(TEST_USER_EMAIL), anyString(), anyString());
-            verify(drugRepository).save(argThat(DrugEntity::isAlertSent));
-        }
-
-        @Test
-        void shouldWrapAndPropagateWhenEmailFails() {
-            OffsetDateTime end = DateUtils.buildExpirationDate(YEAR_NOW_PLUS_1, 8);
-            DrugEntity d = DrugEntity.builder().drugId(1).drugName("X").expirationDate(end).alertSent(false).build();
-            when(drugRepository.findByOwnerUserIdAndExpirationDateLessThanEqualAndAlertSentFalse(TEST_USER_ID, end)).thenReturn(List.of(d));
-            doThrow(new RuntimeException("smtp fail")).when(emailService).sendEmail(anyString(), anyString(), anyString());
-            assertThatThrownBy(() -> drugService.sendExpiryAlertEmailsForCurrentUser(YEAR_NOW_PLUS_1, 8)).isInstanceOf(EmailSendingException.class).hasMessageContaining("Could not send consolidated email alert");
-            verify(drugRepository, never()).save(any(DrugEntity.class));
-        }
-
-        @Test
-        void defaultVariantShouldDelegateToMonthAhead() {
-            DrugRepository drugRepository = Mockito.mock(DrugRepository.class);
-            CurrentUserService currentUserService = Mockito.mock(CurrentUserService.class);
-            DrugMapper drugMapper = Mockito.mock(DrugMapper.class);
-            EmailService emailService = Mockito.mock(EmailService.class);
-            PasswordEncoder passwordEncoder = Mockito.mock(PasswordEncoder.class);
-
-            // 2. Tworzymy ręcznie instancję serwisu, przekazując te mocki
-            DrugService serviceInstance = new DrugService(drugRepository, drugFormService, drugMapper, emailService, currentUserService, userRepository, userService, passwordEncoder);
-
-            // 3. Robimy szpiega na czystym obiekcie
-            DrugService spy = Mockito.spy(serviceInstance);
-
-            // 4. Mówimy szpiegowi: "Gdy zawołasz metodę z parametrami, nie rób nic i zwróć 0"
-            // Używamy doReturn, żeby uniknąć wywołania prawdziwej logiki wewnątrz szpiega
-            doReturn(0).when(spy).sendExpiryAlertEmailsForCurrentUser(anyInt(), anyInt());
-
-            // 5. Wywołujemy metodę domyślną
-            spy.sendDefaultExpiryAlertEmailsForCurrentUser();
-
-            // 6. Sprawdzamy, czy "pod maską" wywołała się ta druga metoda
-            verify(spy).sendExpiryAlertEmailsForCurrentUser(anyInt(), anyInt());
-        }
-
-        @Test
-        void shouldSkipAlreadyAlertedDrugs() {
-            // given
-            OffsetDateTime end = DateUtils.buildExpirationDate(YEAR_NOW_PLUS_1, 8);
-            DrugEntity alreadyAlerted = DrugEntity.builder().drugId(9).drugName("Notified Drug").expirationDate(end).drugDescription("desc").alertSent(true).build();
-
-            // Although the repository method name implies alertSent=false, we purposely return a true value
-            // to exercise the defensive else-branch in the service.
-            when(drugRepository.findByOwnerUserIdAndExpirationDateLessThanEqualAndAlertSentFalse(TEST_USER_ID, end)).thenReturn(List.of(alreadyAlerted));
-
-            // when
-            drugService.sendExpiryAlertEmailsForCurrentUser(YEAR_NOW_PLUS_1, 8);
-
-            // then
-            verify(emailService, never()).sendEmail(anyString(), anyString(), anyString());
-            verify(drugRepository, never()).save(any(DrugEntity.class));
         }
     }
 

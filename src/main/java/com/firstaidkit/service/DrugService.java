@@ -126,25 +126,6 @@ public class DrugService {
         log.info("User {} successfully updated drug with ID: {}", userId, id);
     }
 
-    @CacheEvict(value = {"drugById", "drugsSearch", "drugStatistics"}, keyGenerator = "userAwareCacheKeyGenerator")
-    public int sendExpiryAlertEmailsForCurrentUser(int year, int month) {
-        Integer userId = currentUserService.getCurrentUserId();
-        String userEmail = currentUserService.getCurrentUserEmail();
-        log.info("User {} sending expiry alert emails for drugs expiring up to {}/{}", userId, year, month);
-
-        OffsetDateTime endInclusive = DateUtils.buildExpirationDate(year, month);
-        List<DrugEntity> expiringDrugs = drugRepository.findByOwnerUserIdAndExpirationDateLessThanEqualAndAlertSentFalse(userId, endInclusive);
-
-        return sendAlertsForDrugs(expiringDrugs, userEmail);
-    }
-
-    @CacheEvict(value = {"drugsSearch", "drugStatistics"}, allEntries = true)
-    public int sendDefaultExpiryAlertEmailsForCurrentUser() {
-        log.info("Sending default expiry alert emails for current user.");
-        OffsetDateTime now = now();
-        return sendExpiryAlertEmailsForCurrentUser(now.getYear(), now.getMonthValue());
-    }
-
     /**
      * Scheduled task: sends alerts to all users with drugs expiring within 1 month.
      * Runs daily at 9:00 AM.
@@ -239,7 +220,7 @@ public class DrugService {
         log.info("User {} fetching drug statistics.", userId);
 
         long total = drugRepository.countByOwnerUserId(userId);
-        long expired = drugRepository.countByOwnerUserIdAndExpirationDateBefore(userId, now());
+        long expired = drugRepository.countByOwnerUserIdAndExpirationDateBefore(userId, DateUtils.startOfToday());
         long alertsSent = drugRepository.countByOwnerUserIdAndAlertSentTrue(userId);
         List<Object[]> rawStats = drugRepository.countGroupedByFormAndUserId(userId);
         Map<String, Long> stats = mapGroupedByForm(rawStats);
@@ -261,7 +242,7 @@ public class DrugService {
 
         name = (name != null && !name.isBlank()) ? name.trim() : "";
 
-        OffsetDateTime now = now();
+        OffsetDateTime now = DateUtils.startOfToday();
         if (expirationUntilYear != null && expirationUntilMonth == null) {
             expirationUntilMonth = 12;
             log.debug("Only year provided ({}). Defaulting month to December (12).", expirationUntilYear);

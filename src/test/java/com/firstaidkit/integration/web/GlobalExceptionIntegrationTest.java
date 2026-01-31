@@ -4,11 +4,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.firstaidkit.config.NoSecurityConfig;
 import com.firstaidkit.config.TestCacheConfig;
 import com.firstaidkit.config.TestSecurityConfig;
-import com.firstaidkit.controller.alert.AlertController;
 import com.firstaidkit.controller.drug.DrugController;
 import com.firstaidkit.controller.handler.GlobalExceptionHandler;
 import com.firstaidkit.domain.exception.DrugNotFoundException;
-import com.firstaidkit.domain.exception.EmailSendingException;
 import com.firstaidkit.domain.exception.InvalidSortFieldException;
 import com.firstaidkit.infrastructure.cache.UserAwareCacheKeyGenerator;
 import com.firstaidkit.infrastructure.csv.CsvExportService;
@@ -35,13 +33,12 @@ import java.util.Objects;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.BDDMockito.given;
-import static org.mockito.BDDMockito.willThrow;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(controllers = {DrugController.class, AlertController.class})
+@WebMvcTest(controllers = {DrugController.class})
 @AutoConfigureMockMvc(addFilters = false)
 @Import({GlobalExceptionHandler.class, NoSecurityConfig.class, TestCacheConfig.class, TestSecurityConfig.class})
 public class GlobalExceptionIntegrationTest {
@@ -312,20 +309,4 @@ public class GlobalExceptionIntegrationTest {
 
     }
 
-    @Nested
-    @DisplayName("EmailSendingException handling")
-    class EmailSendingExceptionIntegrationTest {
-        @Test
-        void shouldReturn500WhenEmailSendingFails() throws Exception {
-            // Arrange: when alert endpoint triggers service, throw EmailSendingException
-            willThrow(new EmailSendingException("boom")).given(drugService).sendDefaultExpiryAlertEmailsForCurrentUser();
-
-            mockMvc.perform(post("/api/email/alert"))
-                    .andExpect(status().isInternalServerError())
-                    .andExpect(jsonPath("$.status")
-                            .value(500))
-                    .andExpect(jsonPath("$.message")
-                            .value("Failed to send expiry alert email. Please try again later."));
-        }
-    }
 }

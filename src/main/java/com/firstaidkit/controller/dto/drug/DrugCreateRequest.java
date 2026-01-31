@@ -42,9 +42,7 @@ public class DrugCreateRequest {
     @Schema(description = "Expiration month of the drug", example = "5")
     private Integer expirationMonth;
 
-    @NotBlank(message = "Description must not be blank")
     @Size(max = 2000, message = "Description must be at most 2000 characters")
-    @Schema(description = "Description of the drug", example = "Painkiller for fever and inflammation")
-    @NotNull(message = "Description must not be null")
+    @Schema(description = "Description of the drug", example = "Painkiller for fever and inflammation", nullable = true)
     private String description;
 }
