@@ -1,5 +1,6 @@
 package com.firstaidkit.infrastructure.email;
 
+import com.firstaidkit.domain.exception.EmailSendingException;
 import io.github.resilience4j.retry.annotation.Retry;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,11 +21,15 @@ public class EmailService {
     @Async("emailTaskExecutor")
     @Retry(name = "emailService", fallbackMethod = "sendEmailFallback")
     public void sendEmailAsync(String to, String subject, String body) {
-        sendEmail(to, subject, body);
+        doSendEmail(to, subject, body);
     }
 
-    @Retry(name = "emailService")
+    @Retry(name = "emailService", fallbackMethod = "sendEmailFallback")
     public void sendEmail(String to, String subject, String body) {
+        doSendEmail(to, subject, body);
+    }
+
+    private void doSendEmail(String to, String subject, String body) {
         log.info("Preparing to send email to: {}, Subject: {}", to, subject);
 
         var message = new SimpleMailMessage();
@@ -44,6 +49,7 @@ public class EmailService {
     }
 
     private void sendEmailFallback(String to, String subject, String body, Exception e) {
-        log.error("Failed to send email to {} after retries. Subject: {}. Error: {}", to, subject, e.getMessage());
+        log.error("Failed to send email to {} after all retries. Subject: {}. Error: {}", to, subject, e.getMessage());
+        throw new EmailSendingException("Failed to send email to " + to + " after all retries", e);
     }
 }
