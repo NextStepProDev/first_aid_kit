@@ -231,7 +231,7 @@ class DrugServiceTest {
         void shouldReturnAggregates() {
             when(drugRepository.countByOwnerUserId(TEST_USER_ID)).thenReturn(10L);
             when(drugRepository.countByOwnerUserIdAndExpirationDateBefore(eq(TEST_USER_ID), any())).thenReturn(4L);
-            when(drugRepository.countByOwnerUserIdAndAlertSentAtBetween(eq(TEST_USER_ID), any(), any())).thenReturn(3L);
+            when(drugRepository.countByOwnerUserIdAndAlertSentAtGreaterThanEqualAndAlertSentAtLessThan(eq(TEST_USER_ID), any(), any())).thenReturn(3L);
             when(drugRepository.countGroupedByFormAndUserId(TEST_USER_ID)).thenReturn(List.of(new Object[]{"PILLS", 6L}, new Object[]{"GEL", 1L}));
             DrugStatistics s = drugService.getDrugStatistics();
             assertThat(s.getTotalDrugs()).isEqualTo(10);
@@ -245,7 +245,7 @@ class DrugServiceTest {
         void shouldIgnoreNullsInGroupedData() {
             when(drugRepository.countByOwnerUserId(TEST_USER_ID)).thenReturn(5L);
             when(drugRepository.countByOwnerUserIdAndExpirationDateBefore(eq(TEST_USER_ID), any())).thenReturn(1L);
-            when(drugRepository.countByOwnerUserIdAndAlertSentAtBetween(eq(TEST_USER_ID), any(), any())).thenReturn(0L);
+            when(drugRepository.countByOwnerUserIdAndAlertSentAtGreaterThanEqualAndAlertSentAtLessThan(eq(TEST_USER_ID), any(), any())).thenReturn(0L);
             when(drugRepository.countGroupedByFormAndUserId(TEST_USER_ID)).thenReturn(List.of(new Object[]{"PILLS", 2L}, new Object[]{null, 3L}, new Object[]{"GEL", null}));
 
             DrugStatistics s = drugService.getDrugStatistics();

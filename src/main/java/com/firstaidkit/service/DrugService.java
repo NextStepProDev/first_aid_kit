@@ -230,7 +230,7 @@ public class DrugService {
         YearMonth currentMonth = YearMonth.now(zone);
         OffsetDateTime monthStart = currentMonth.atDay(1).atStartOfDay(zone).toOffsetDateTime();
         OffsetDateTime monthEnd = currentMonth.atEndOfMonth().atStartOfDay(zone).plusDays(1).toOffsetDateTime();
-        long monthlyAlertsSent = drugRepository.countByOwnerUserIdAndAlertSentAtBetween(userId, monthStart, monthEnd);
+        long monthlyAlertsSent = drugRepository.countByOwnerUserIdAndAlertSentAtGreaterThanEqualAndAlertSentAtLessThan(userId, monthStart, monthEnd);
 
         List<Object[]> rawStats = drugRepository.countGroupedByFormAndUserId(userId);
         Map<String, Long> stats = mapGroupedByForm(rawStats);
