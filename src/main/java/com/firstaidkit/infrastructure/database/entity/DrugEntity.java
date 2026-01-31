@@ -40,4 +40,7 @@ public class DrugEntity {
     @Builder.Default
     @Column(name = "alert_sent", nullable = false)
     private boolean alertSent = false;
+
+    @Column(name = "alert_sent_at")
+    private OffsetDateTime alertSentAt;
 }

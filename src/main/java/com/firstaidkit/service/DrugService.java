@@ -30,6 +30,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.time.YearMonth;
+import java.time.ZoneId;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -203,8 +205,10 @@ public class DrugService {
             emailService.sendEmail(recipientEmail, subject, messageBuilder.toString());
             log.info("Consolidated alert sent for {} drugs to {}", drugsToAlert.size(), recipientEmail);
 
+            OffsetDateTime now = OffsetDateTime.now();
             for (DrugEntity drug : drugsToAlert) {
                 drug.setAlertSent(true);
+                drug.setAlertSentAt(now);
                 drugRepository.save(drug);
             }
             return drugsToAlert.size();
@@ -221,14 +225,20 @@ public class DrugService {
 
         long total = drugRepository.countByOwnerUserId(userId);
         long expired = drugRepository.countByOwnerUserIdAndExpirationDateBefore(userId, DateUtils.startOfToday());
-        long alertsSent = drugRepository.countByOwnerUserIdAndAlertSentTrue(userId);
+
+        ZoneId zone = ZoneId.of("Europe/Warsaw");
+        YearMonth currentMonth = YearMonth.now(zone);
+        OffsetDateTime monthStart = currentMonth.atDay(1).atStartOfDay(zone).toOffsetDateTime();
+        OffsetDateTime monthEnd = currentMonth.atEndOfMonth().atStartOfDay(zone).plusDays(1).toOffsetDateTime();
+        long monthlyAlertsSent = drugRepository.countByOwnerUserIdAndAlertSentAtBetween(userId, monthStart, monthEnd);
+
         List<Object[]> rawStats = drugRepository.countGroupedByFormAndUserId(userId);
         Map<String, Long> stats = mapGroupedByForm(rawStats);
         long activeDrugs = total - expired;
 
-        log.info("User {} statistics fetched: Total Drugs: {}, Expired Drugs: {}, Active Drugs: {}, Alerts Sent: {}", userId, total, expired, activeDrugs, alertsSent);
+        log.info("User {} statistics fetched: Total Drugs: {}, Expired Drugs: {}, Active Drugs: {}, Monthly Alerts Sent: {}", userId, total, expired, activeDrugs, monthlyAlertsSent);
 
-        return DrugStatistics.builder().totalDrugs(total).expiredDrugs(expired).activeDrugs(activeDrugs).alertSentCount(alertsSent).drugsByForm(stats).build();
+        return DrugStatistics.builder().totalDrugs(total).expiredDrugs(expired).activeDrugs(activeDrugs).alertSentCount(monthlyAlertsSent).drugsByForm(stats).build();
     }
 
     private Map<String, Long> mapGroupedByForm(List<Object[]> rawData) {

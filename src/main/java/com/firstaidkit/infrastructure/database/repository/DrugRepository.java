@@ -6,8 +6,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
-import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.jpa.repository.Modifying;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,6 +27,8 @@ public interface DrugRepository extends JpaRepository<DrugEntity, Integer>, JpaS
     long countByOwnerUserIdAndExpirationDateBefore(Integer userId, OffsetDateTime date);
 
     long countByOwnerUserIdAndAlertSentTrue(Integer userId);
+
+    long countByOwnerUserIdAndAlertSentAtBetween(Integer userId, OffsetDateTime from, OffsetDateTime to);
 
     @Query("SELECT d.drugForm.name, COUNT(d) FROM DrugEntity d WHERE d.owner.userId = :userId GROUP BY d.drugForm.name")
     List<Object[]> countGroupedByFormAndUserId(Integer userId);
