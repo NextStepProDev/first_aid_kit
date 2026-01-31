@@ -153,6 +153,19 @@ public class AuthController {
         return ResponseEntity.ok(profile);
     }
 
+    @PutMapping("/alerts")
+    @Operation(summary = "Update alert preferences", description = "Enables or disables email alerts for expiring drugs")
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Alert preferences updated successfully",
+                    content = @Content(schema = @Schema(implementation = UserProfileResponse.class))),
+            @ApiResponse(responseCode = "401", description = "Not authenticated")
+    })
+    public ResponseEntity<UserProfileResponse> updateAlerts(@RequestBody UpdateAlertsRequest request) {
+        UserProfileResponse profile = authService.updateAlertsEnabled(request.alertsEnabled());
+        return ResponseEntity.ok(profile);
+    }
+
     @PutMapping("/profile")
     @Operation(summary = "Update user profile", description = "Updates the name and username for the authenticated user. Email cannot be changed.")
     @SecurityRequirement(name = "bearerAuth")

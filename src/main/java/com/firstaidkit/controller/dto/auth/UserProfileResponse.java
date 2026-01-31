@@ -21,4 +21,5 @@ public class UserProfileResponse {
     private Set<String> roles;
     private OffsetDateTime createdAt;
     private OffsetDateTime lastLogin;
+    private Boolean alertsEnabled;
 }

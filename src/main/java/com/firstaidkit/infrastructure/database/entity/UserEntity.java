@@ -62,6 +62,10 @@ public class UserEntity {
     @Column(name = "locked_until")
     private OffsetDateTime lockedUntil;
 
+    @Column(name = "alerts_enabled")
+    @Builder.Default
+    private Boolean alertsEnabled = true;
+
     public boolean isAccountLocked() {
         return lockedUntil != null && lockedUntil.isAfter(OffsetDateTime.now());
     }

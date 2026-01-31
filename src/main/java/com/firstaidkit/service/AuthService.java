@@ -236,6 +236,7 @@ public class AuthService {
                 .roles(roles)
                 .createdAt(user.getCreatedAt())
                 .lastLogin(user.getLastLogin())
+                .alertsEnabled(user.getAlertsEnabled())
                 .build();
     }
 
@@ -270,6 +271,34 @@ public class AuthService {
                 .roles(roles)
                 .createdAt(savedUser.getCreatedAt())
                 .lastLogin(savedUser.getLastLogin())
+                .alertsEnabled(savedUser.getAlertsEnabled())
+                .build();
+    }
+
+    @Transactional
+    public UserProfileResponse updateAlertsEnabled(boolean enabled) {
+        Integer userId = currentUserService.getCurrentUserId();
+
+        UserEntity user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalStateException("User not found"));
+
+        user.setAlertsEnabled(enabled);
+        UserEntity savedUser = userRepository.save(user);
+        log.info("Alerts enabled set to {} for user: {}", enabled, savedUser.getEmail());
+
+        Set<String> roles = savedUser.getRole().stream()
+                .map(RoleEntity::getRole)
+                .collect(Collectors.toSet());
+
+        return UserProfileResponse.builder()
+                .userId(savedUser.getUserId())
+                .username(savedUser.getUserName())
+                .email(savedUser.getEmail())
+                .name(savedUser.getName())
+                .roles(roles)
+                .createdAt(savedUser.getCreatedAt())
+                .lastLogin(savedUser.getLastLogin())
+                .alertsEnabled(savedUser.getAlertsEnabled())
                 .build();
     }
 }

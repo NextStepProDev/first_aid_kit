@@ -149,8 +149,8 @@ public class DrugService {
 
         for (Integer userId : userIds) {
             UserEntity user = userRepository.findByUserId(userId).orElse(null);
-            if (user == null || user.getEmail() == null || user.getEmail().isBlank()) {
-                log.warn("Skipping user {} - no valid email address", userId);
+            if (user == null || !Boolean.TRUE.equals(user.getAlertsEnabled()) || user.getEmail() == null || user.getEmail().isBlank()) {
+                log.warn("Skipping user {} - alerts disabled or no valid email address", userId);
                 continue;
             }
 
