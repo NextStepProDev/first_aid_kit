@@ -81,6 +81,12 @@ public class AdminService {
         UserEntity userToDelete = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("User not found with id: " + userId));
 
+        boolean isTargetAdmin = userToDelete.getRole() != null && userToDelete.getRole().stream()
+                .anyMatch(r -> "ADMIN".equals(r.getRole()));
+        if (isTargetAdmin) {
+            throw new IllegalArgumentException("Cannot delete admin account");
+        }
+
         String deletedUserEmail = userToDelete.getEmail();
 
         drugRepository.deleteAllByOwnerUserId(userId);
@@ -113,13 +119,13 @@ public class AdminService {
         List<UserEntity> users = userRepository.findAll();
 
         StringBuilder csv = new StringBuilder();
-        csv.append("email,name,username,active,created_at\n");
+        csv.append("email;name;username;active;created_at\n");
 
         for (UserEntity user : users) {
-            csv.append(escapeCsv(user.getEmail())).append(",");
-            csv.append(escapeCsv(user.getName() != null ? user.getName() : "")).append(",");
-            csv.append(escapeCsv(user.getUserName())).append(",");
-            csv.append(user.getActive()).append(",");
+            csv.append(escapeCsv(user.getEmail())).append(";");
+            csv.append(escapeCsv(user.getName() != null ? user.getName() : "")).append(";");
+            csv.append(escapeCsv(user.getUserName())).append(";");
+            csv.append(user.getActive()).append(";");
             csv.append(user.getCreatedAt() != null ? user.getCreatedAt().toString() : "").append("\n");
         }
 
@@ -137,7 +143,7 @@ public class AdminService {
 
     private String escapeCsv(String value) {
         if (value == null) return "";
-        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
+        if (value.contains(";") || value.contains("\"") || value.contains("\n")) {
             return "\"" + value.replace("\"", "\"\"") + "\"";
         }
         return value;

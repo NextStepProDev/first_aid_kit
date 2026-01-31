@@ -1,12 +1,12 @@
 package com.firstaidkit.controller.drug;
 
 import com.firstaidkit.controller.dto.drug.*;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import com.firstaidkit.infrastructure.csv.CsvExportService;
 import com.firstaidkit.infrastructure.pdf.PdfExportService;
 import com.firstaidkit.service.DrugService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -139,7 +139,7 @@ public class DrugController {
             throw new IllegalArgumentException("Maximum page size for PDF export is " + MAX_PDF_PAGE_SIZE + ".");
         }
         Page<DrugResponse> resultPage = drugService.searchDrugs(
-                name, form, expired, expirationUntilYear, expirationUntilMonth, pageable
+                name, form, expired, null, expirationUntilYear, expirationUntilMonth, pageable
         );
         List<DrugResponse> drugs = resultPage.getContent();
         byte[] pdf = pdfExportService.generatePdf(drugs);
@@ -178,7 +178,7 @@ public class DrugController {
             throw new IllegalArgumentException("Maximum page size for CSV export is " + MAX_PDF_PAGE_SIZE + ".");
         }
         Page<DrugResponse> resultPage = drugService.searchDrugs(
-                name, form, expired, expirationUntilYear, expirationUntilMonth, pageable
+                name, form, expired, null, expirationUntilYear, expirationUntilMonth, pageable
         );
         List<DrugResponse> drugs = resultPage.getContent();
         byte[] csv = csvExportService.generateCsv(drugs);
@@ -210,6 +210,7 @@ public class DrugController {
     - name (contains, case-insensitive)
     - form (e.g. pills, syrup)
     - expired (true/false)
+    - expiringSoon (true) - returns drugs expiring within next 30 days
     - expirationUntilYear & expirationUntilMonth (for expiration filtering)
 
     Supports sorting and pagination:
@@ -223,6 +224,7 @@ public class DrugController {
         @RequestParam(required = false) String name,
         @RequestParam(required = false) String form,
         @RequestParam(required = false) Boolean expired,
+        @RequestParam(required = false) Boolean expiringSoon,
         @RequestParam(required = false) @Min(value = 2024, message = "Year must be >= 2024")
         @Max(value = 2100, message = "Year must be <= 2100") Integer expirationUntilYear,
         @RequestParam(required = false)
@@ -230,11 +232,11 @@ public class DrugController {
         @Max(value = 12, message = "Bro, months go only up to 12") Integer expirationUntilMonth,
         @ParameterObject Pageable pageable
     ) {
-        log.info("Searching drugs with filters: name={}, form={}, expired={}, expirationUntil={}-{}",
-                name, form, expired, expirationUntilYear, expirationUntilMonth);
+        log.info("Searching drugs with filters: name={}, form={}, expired={}, expiringSoon={}, expirationUntil={}-{}",
+                name, form, expired, expiringSoon, expirationUntilYear, expirationUntilMonth);
         if (pageable.getPageSize() > MAX_SEARCH_PAGE_SIZE) {
             throw new IllegalArgumentException("Maximum page size exceeded. Allowed maximum is " + MAX_SEARCH_PAGE_SIZE);
         }
-        return drugService.searchDrugs(name, form, expired, expirationUntilYear, expirationUntilMonth, pageable);
+        return drugService.searchDrugs(name, form, expired, expiringSoon, expirationUntilYear, expirationUntilMonth, pageable);
     }
 }

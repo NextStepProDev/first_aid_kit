@@ -57,14 +57,31 @@ public class DrugControllerValidationSliceTest {
     private JwtTokenProvider jwtTokenProvider;
 
     static Stream<Arguments> invalidMonthProvider() {
-        int currentMonth = OffsetDateTime.now().getMonthValue();
         return Stream.of(
-                Arguments.of(true, currentMonth),   // valid: current month with current year
                 Arguments.of(true, 12),             // valid: December
+                Arguments.of(true, 1),              // valid: January (future year used in test)
                 Arguments.of(false, 0),
                 Arguments.of(false, null),
                 Arguments.of(false, -1),
-                Arguments.of(false, currentMonth - 1)
+                Arguments.of(false, 13)
+        );
+    }
+
+    static Stream<Arguments> expirationDateCrossFieldProvider() {
+        int currentYear = OffsetDateTime.now().getYear();
+        int currentMonth = OffsetDateTime.now().getMonthValue();
+        return Stream.of(
+                // Future year: any month is valid
+                Arguments.of(true, currentYear + 1, 1),
+                Arguments.of(true, currentYear + 1, 12),
+                // Current year, current month: valid
+                Arguments.of(true, currentYear, currentMonth),
+                // Current year, future month: valid
+                Arguments.of(true, currentYear, 12),
+                // Current year, past month: invalid
+                Arguments.of(currentMonth > 1, currentYear, currentMonth - 1),
+                // Past year: invalid
+                Arguments.of(false, currentYear - 1, 12)
         );
     }
 
@@ -113,10 +130,23 @@ public class DrugControllerValidationSliceTest {
 
     @ParameterizedTest
     @MethodSource("invalidMonthProvider")
-    @DisplayName("Should return 201 for valid month and 400 for invalid month")
+    @DisplayName("Should return 201 for valid month range and 400 for invalid month range")
     void shouldReturnBadRequestForInvalidMonth(Boolean isValid, Integer month) throws Exception {
         int validYear = OffsetDateTime.now().getYear() + 1;
-        String json = buildJson("Ibuprofen", "PILLS", validYear, month, "lek przeciwbólowy");
+        String json = buildJson("Ibuprofen", "PILLS", validYear, month, "lek przeciwbolowy");
+        mockMvc.perform(
+                        post("/api/drugs")
+                                .contentType(MediaType.APPLICATION_JSON)
+                                .content(json)
+                )
+                .andExpect(isValid ? status().isCreated() : status().isBadRequest());
+    }
+
+    @ParameterizedTest
+    @MethodSource("expirationDateCrossFieldProvider")
+    @DisplayName("Should validate expiration date cross-field (year + month)")
+    void shouldValidateExpirationDateCrossField(Boolean isValid, Integer year, Integer month) throws Exception {
+        String json = buildJson("Ibuprofen", "PILLS", year, month, "lek przeciwbolowy");
         mockMvc.perform(
                         post("/api/drugs")
                                 .contentType(MediaType.APPLICATION_JSON)
@@ -129,7 +159,7 @@ public class DrugControllerValidationSliceTest {
     @MethodSource("invalidYearProvider")
     @DisplayName("Should return 201 for valid year and 400 for invalid year")
     void shouldReturnBadRequestForInvalidYear(Boolean isValid, Integer year) throws Exception {
-        String json = buildJson("Ibuprofen", "PILLS", year, 12, "lek przeciwbólowy");
+        String json = buildJson("Ibuprofen", "PILLS", year, 12, "lek przeciwbolowy");
         mockMvc.perform(
                         post("/api/drugs")
                                 .contentType(MediaType.APPLICATION_JSON)
@@ -143,7 +173,7 @@ public class DrugControllerValidationSliceTest {
     @DisplayName("Should return 201 for valid name and 400 for invalid name")
     void shouldReturnBadRequestForInvalidNames(Boolean isValid, String name) throws Exception {
         int validYear = OffsetDateTime.now().getYear() + 1;
-        String json = buildJson(name, "PILLS", validYear, 12, "lek przeciwbólowy");
+        String json = buildJson(name, "PILLS", validYear, 12, "lek przeciwbolowy");
         mockMvc.perform(
                         post("/api/drugs")
                                 .contentType(MediaType.APPLICATION_JSON)

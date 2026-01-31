@@ -236,7 +236,7 @@ public class GlobalExceptionIntegrationTest {
             given(drugService.searchDrugs(
                     nullable(String.class),
                     nullable(String.class),
-                    any(), any(), any(), any()
+                    any(), any(), any(), any(), any()
             )).willThrow(new InvalidSortFieldException("unknown"));
 
             mockMvc.perform(get("/api/drugs/search")
@@ -282,7 +282,7 @@ public class GlobalExceptionIntegrationTest {
             // stub search to return empty page (controller still exports header/body)
             given(drugService.searchDrugs(
                     nullable(String.class), nullable(String.class),
-                    any(), any(), any(), any()
+                    any(), any(), any(), any(), any()
             )).willReturn(Page.empty());
 
             // stub PDF exporter to return some bytes

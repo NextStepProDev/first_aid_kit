@@ -254,10 +254,10 @@ public class DrugService {
         return rawData.stream().filter(arr -> arr[0] != null && arr[1] != null).collect(Collectors.toMap(arr -> (String) arr[0], arr -> ((Number) arr[1]).longValue()));
     }
 
-    @Cacheable(value = "drugsSearch", keyGenerator = "userAwareCacheKeyGenerator", condition = "(#name != null && #name.trim().length() > 0) || (#form != null && #form.trim().length() > 0) || (#expired != null) || (#expirationUntilYear != null) || (#expirationUntilMonth != null)", unless = "#result == null || #result.isEmpty()")
-    public Page<DrugResponse> searchDrugs(String name, String form, Boolean expired, Integer expirationUntilYear, Integer expirationUntilMonth, Pageable pageable) {
+    @Cacheable(value = "drugsSearch", keyGenerator = "userAwareCacheKeyGenerator", condition = "(#name != null && #name.trim().length() > 0) || (#form != null && #form.trim().length() > 0) || (#expired != null) || (#expiringSoon != null) || (#expirationUntilYear != null) || (#expirationUntilMonth != null)", unless = "#result == null || #result.isEmpty()")
+    public Page<DrugResponse> searchDrugs(String name, String form, Boolean expired, Boolean expiringSoon, Integer expirationUntilYear, Integer expirationUntilMonth, Pageable pageable) {
         Integer userId = currentUserService.getCurrentUserId();
-        log.info("User {} searching drugs with filters: name={}, form={}, expired={}, expirationUntilYear={}, expirationUntilMonth={}, pageable={}", userId, name, form, expired, expirationUntilYear, expirationUntilMonth, pageable);
+        log.info("User {} searching drugs with filters: name={}, form={}, expired={}, expiringSoon={}, expirationUntilYear={}, expirationUntilMonth={}, pageable={}", userId, name, form, expired, expiringSoon, expirationUntilYear, expirationUntilMonth, pageable);
 
         name = (name != null && !name.isBlank()) ? name.trim() : "";
 
@@ -292,7 +292,11 @@ public class DrugService {
             DrugFormEntity finalFormEntity = formEntity;
             spec = spec.and((root, query, cb) -> cb.equal(root.get("drugForm"), finalFormEntity));
         }
-        if (expired != null) {
+        if (Boolean.TRUE.equals(expiringSoon)) {
+            OffsetDateTime thirtyDaysFromNow = now.plusDays(30);
+            spec = spec.and((root, query, cb) -> cb.greaterThanOrEqualTo(root.get("expirationDate"), now));
+            spec = spec.and((root, query, cb) -> cb.lessThanOrEqualTo(root.get("expirationDate"), thirtyDaysFromNow));
+        } else if (expired != null) {
             if (expired) {
                 spec = spec.and((root, query, cb) -> cb.lessThan(root.get("expirationDate"), now));
             } else {

@@ -7,16 +7,16 @@ import java.lang.annotation.Documented;
 import java.lang.annotation.Retention;
 import java.lang.annotation.Target;
 
-import static java.lang.annotation.ElementType.FIELD;
+import static java.lang.annotation.ElementType.TYPE;
 import static java.lang.annotation.RetentionPolicy.RUNTIME;
 
 @Documented
 @Constraint(validatedBy = NotBeforeCurrentMonthValidator.class)
-@Target({FIELD})
+@Target({TYPE})
 @Retention(RUNTIME)
 public @interface NotBeforeCurrentMonth {
 
-    String message() default "Expiration month must be current or later";
+    String message() default "Expiration date must not be before current month";
 
     Class<?>[] groups() default {};
 

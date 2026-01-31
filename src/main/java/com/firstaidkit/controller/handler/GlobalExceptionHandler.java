@@ -5,7 +5,6 @@ import com.firstaidkit.controller.dto.error.FieldValidationError;
 import com.firstaidkit.controller.dto.error.ValidationErrorMessageDTO;
 import com.firstaidkit.domain.exception.*;
 import jakarta.validation.ConstraintViolationException;
-import org.springframework.security.authentication.DisabledException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.core.PropertyReferenceException;
@@ -14,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -34,7 +34,7 @@ public class GlobalExceptionHandler {
     // Handles MethodArgumentNotValidException when a method argument validation fails (e.g., DTO validation).
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ValidationErrorMessageDTO> handleValidationErrors(MethodArgumentNotValidException ex) {
-        List<FieldValidationError> errors = ex.getBindingResult().getFieldErrors().stream()
+        List<FieldValidationError> fieldErrors = ex.getBindingResult().getFieldErrors().stream()
                 .collect(Collectors.toMap(
                         FieldError::getField,
                         err -> new FieldValidationError(
@@ -47,6 +47,17 @@ public class GlobalExceptionHandler {
                 .values()
                 .stream()
                 .toList();
+
+        List<FieldValidationError> globalErrors = ex.getBindingResult().getGlobalErrors().stream()
+                .map(err -> new FieldValidationError(
+                        err.getObjectName(),
+                        null,
+                        err.getDefaultMessage()
+                ))
+                .toList();
+
+        List<FieldValidationError> errors = new java.util.ArrayList<>(fieldErrors);
+        errors.addAll(globalErrors);
 
         log.warn("Validation error(s): {}", errors);
 

@@ -20,7 +20,6 @@ import com.firstaidkit.service.DrugFormService;
 import com.firstaidkit.service.DrugService;
 import com.firstaidkit.service.UserService;
 import org.junit.jupiter.api.BeforeEach;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -32,6 +31,7 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -334,7 +334,7 @@ class DrugServiceTest {
         void shouldDefaultYearWhenOnlyMonthProvided() {
             Pageable pageable = PageRequest.of(0, 10);
             when(drugRepository.findAll(ArgumentMatchers.<Specification<DrugEntity>>any(), eq(pageable))).thenReturn(new PageImpl<>(List.of(), pageable, 0));
-            drugService.searchDrugs("", null, null, null, 8, pageable);
+            drugService.searchDrugs("", null, null, null, null, 8, pageable);
             verify(drugRepository).findAll(ArgumentMatchers.<Specification<DrugEntity>>any(), eq(pageable));
         }
 
@@ -342,7 +342,7 @@ class DrugServiceTest {
         void shouldDefaultMonthToDecemberWhenOnlyYearProvided() {
             Pageable pageable = PageRequest.of(0, 10);
             when(drugRepository.findAll(ArgumentMatchers.<Specification<DrugEntity>>any(), eq(pageable))).thenReturn(new PageImpl<>(List.of(), pageable, 0));
-            drugService.searchDrugs("", null, null, YEAR_NOW_PLUS_1, null, pageable);
+            drugService.searchDrugs("", null, null, null, YEAR_NOW_PLUS_1, null, pageable);
             verify(drugRepository).findAll(ArgumentMatchers.<Specification<DrugEntity>>any(), eq(pageable));
         }
 
@@ -360,7 +360,7 @@ class DrugServiceTest {
             DrugResponse d2 = DrugResponse.builder().drugId(2).drugName("B2").build();
             when(drugMapper.mapToDTO(any(DrugEntity.class))).thenReturn(d1, d2);
 
-            Page<DrugResponse> page = drugService.searchDrugs("", "PILLS", false, null, null, pageable);
+            Page<DrugResponse> page = drugService.searchDrugs("", "PILLS", false, null, null, null, pageable);
             assertThat(page.getTotalElements()).isEqualTo(2);
             assertThat(page.getContent()).extracting(DrugResponse::getDrugId, DrugResponse::getDrugName).containsExactly(tuple(1, "A2"), tuple(2, "B2"));
         }
@@ -368,7 +368,7 @@ class DrugServiceTest {
         @Test
         void shouldThrowOnInvalidFormValue() {
             Pageable pageable = PageRequest.of(0, 10);
-            assertThatThrownBy(() -> drugService.searchDrugs("", "UNKNOWN", null, null, null, pageable)).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Invalid drug form");
+            assertThatThrownBy(() -> drugService.searchDrugs("", "UNKNOWN", null, null, null, null, pageable)).isInstanceOf(IllegalArgumentException.class).hasMessageContaining("Invalid drug form");
         }
 
         @Test
@@ -379,7 +379,7 @@ class DrugServiceTest {
             when(drugRepository.findAll(ArgumentMatchers.<Specification<DrugEntity>>any(), eq(pageable))).thenReturn(new PageImpl<>(List.of(e), pageable, 1));
             when(drugMapper.mapToDTO(e)).thenReturn(DrugResponse.builder().drugId(1).drugName("Old").build());
 
-            Page<DrugResponse> page = drugService.searchDrugs("", null, true, null, null, pageable);
+            Page<DrugResponse> page = drugService.searchDrugs("", null, true, null, null, null, pageable);
 
             assertThat(page.getTotalElements()).isEqualTo(1);
             assertThat(page.getContent()).extracting(DrugResponse::getDrugId, DrugResponse::getDrugName).containsExactly(tuple(1, "Old"));
@@ -393,7 +393,7 @@ class DrugServiceTest {
             when(drugRepository.findAll(ArgumentMatchers.<Specification<DrugEntity>>any(), eq(pageable))).thenReturn(new PageImpl<>(List.of(e), pageable, 1));
             when(drugMapper.mapToDTO(e)).thenReturn(DrugResponse.builder().drugId(2).drugName("Fresh").build());
 
-            Page<DrugResponse> page = drugService.searchDrugs("", null, false, null, null, pageable);
+            Page<DrugResponse> page = drugService.searchDrugs("", null, false, null, null, null, pageable);
 
             assertThat(page.getTotalElements()).isEqualTo(1);
             assertThat(page.getContent()).extracting(DrugResponse::getDrugId, DrugResponse::getDrugName).containsExactly(tuple(2, "Fresh"));
@@ -405,7 +405,7 @@ class DrugServiceTest {
 
             when(drugRepository.findAll(ArgumentMatchers.<Specification<DrugEntity>>any(), eq(pageable))).thenReturn(new PageImpl<>(List.of(), pageable, 0));
 
-            Page<DrugResponse> page = drugService.searchDrugs("", null, null, YEAR_NOW_PLUS_1, 3, pageable);
+            Page<DrugResponse> page = drugService.searchDrugs("", null, null, null, YEAR_NOW_PLUS_1, 3, pageable);
 
             assertThat(page).isNotNull();
             verify(drugRepository).findAll(ArgumentMatchers.<Specification<DrugEntity>>any(), eq(pageable));
@@ -420,7 +420,7 @@ class DrugServiceTest {
             when(drugRepository.findAll(ArgumentMatchers.<Specification<DrugEntity>>any(), eq(pageable))).thenReturn(new PageImpl<>(List.of(e), pageable, 1));
             when(drugMapper.mapToDTO(e)).thenReturn(DrugResponse.builder().drugId(10).drugName("Profen").build());
 
-            Page<DrugResponse> page = drugService.searchDrugs("  proF  ", null, null, null, null, pageable);
+            Page<DrugResponse> page = drugService.searchDrugs("  proF  ", null, null, null, null, null, pageable);
 
             assertThat(page.getTotalElements()).isEqualTo(1);
             assertThat(page.getContent()).extracting(DrugResponse::getDrugId, DrugResponse::getDrugName).containsExactly(tuple(10, "Profen"));

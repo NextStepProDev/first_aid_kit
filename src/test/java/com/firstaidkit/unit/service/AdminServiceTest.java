@@ -274,7 +274,7 @@ class AdminServiceTest {
 
             String csv = adminService.exportEmailsCsv();
 
-            assertThat(csv).startsWith("email,name,username,active,created_at\n");
+            assertThat(csv).startsWith("email;name;username;active;created_at\n");
             assertThat(csv).contains("test@x.com");
             assertThat(csv).contains("Test User");
             assertThat(csv).contains("testuser");
@@ -282,16 +282,16 @@ class AdminServiceTest {
         }
 
         @Test
-        void shouldEscapeCommasAndQuotes() {
+        void shouldEscapeSemicolonsAndQuotes() {
             UserEntity user = UserEntity.builder()
-                    .userId(1).email("test@x.com").name("Last, First")
+                    .userId(1).email("test@x.com").name("Last; First")
                     .userName("user\"name").active(true).createdAt(OffsetDateTime.now()).build();
             when(userRepository.findAll()).thenReturn(List.of(user));
 
             String csv = adminService.exportEmailsCsv();
 
-            // Name with comma should be quoted
-            assertThat(csv).contains("\"Last, First\"");
+            // Name with semicolon should be quoted
+            assertThat(csv).contains("\"Last; First\"");
             // Username with quote should be escaped
             assertThat(csv).contains("\"user\"\"name\"");
         }

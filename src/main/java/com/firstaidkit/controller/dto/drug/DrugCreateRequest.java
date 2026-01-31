@@ -15,6 +15,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder(toBuilder = true)
+@NotBeforeCurrentMonth
 public class DrugCreateRequest {
 
     @NotBlank(message = "Drug name must not be blank")
@@ -38,7 +39,6 @@ public class DrugCreateRequest {
     @NotNull(message = "Expiration month must not be null")
     @Min(value = 1, message = "Expiration month must be between 1 and 12")
     @Max(value = 12, message = "Expiration month must be between 1 and 12")
-    @NotBeforeCurrentMonth
     @Schema(description = "Expiration month of the drug", example = "5")
     private Integer expirationMonth;
 
