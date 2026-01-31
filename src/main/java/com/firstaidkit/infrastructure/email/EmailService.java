@@ -23,6 +23,7 @@ public class EmailService {
         sendEmail(to, subject, body);
     }
 
+    @Retry(name = "emailService")
     public void sendEmail(String to, String subject, String body) {
         log.info("Preparing to send email to: {}, Subject: {}", to, subject);
 

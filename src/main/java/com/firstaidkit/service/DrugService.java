@@ -175,7 +175,11 @@ public class DrugService {
 
             List<DrugEntity> expiringDrugs = drugRepository.findByOwnerUserIdAndExpirationDateLessThanEqualAndAlertSentFalse(userId, endInclusive);
 
-            sendAlertsForDrugs(expiringDrugs, user.getEmail());
+            try {
+                sendAlertsForDrugs(expiringDrugs, user.getEmail());
+            } catch (Exception e) {
+                log.error("Failed to send alert for user {}: {}", userId, e.getMessage());
+            }
         }
     }
 
@@ -196,7 +200,7 @@ public class DrugService {
 
         String subject = "\uD83D\uDC8A Drug Expiry Alert - " + drugsToAlert.size() + " drug(s) expiring soon";
         StringBuilder messageBuilder = new StringBuilder();
-        messageBuilder.append("⚠\uFE0F Attention!\n\n");
+        messageBuilder.append("⚠️ Attention!\n\n");
         messageBuilder.append("The following drugs in your first aid kit are about to expire! ⏳\n");
         messageBuilder.append("Please check them as soon as possible before it's too late! ❌\n\n");
 
